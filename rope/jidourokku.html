@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>自動ロック式トラッカーズ・ヒッチ｜ロープ｜結び方 3D</title>
+<style>
+:root{--surface-0:#ffffff;--surface-1:#f3f2ee;--surface-2:#e9e7e0;--text-primary:#1f1e1c;--border-strong:#b4b2a9;--border-stronger:#5f5e5a;--radius:8px;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root{--surface-0:#2c2c2a;--surface-1:#1f1e1c;--surface-2:#3a3936;--text-primary:#f1efe8;--border-strong:#5f5e5a;--border-stronger:#b4b2a9}}
+body{margin:0;padding:12px;background:var(--surface-0);color:var(--text-primary);font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
+.wrap{max-width:720px;margin:0 auto}
+.vb{font-size:13px;padding:6px 12px;border:0.5px solid var(--border-strong);border-radius:var(--radius);background:var(--surface-2);color:var(--text-primary);cursor:pointer}
+.vb.on{background:var(--surface-0);border-color:var(--border-stronger)}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+#cap{margin-top:8px;font-size:14px;line-height:1.6;min-height:4.8em}
+#cap .src{font-size:12px;opacity:0.7}
+.key{font-size:12px;margin-top:6px;opacity:0.8}
+.key b{display:inline-block;width:10px;height:10px;border-radius:5px;margin:0 4px 0 10px;vertical-align:middle}
+.key b:first-child{margin-left:0}
+.back{display:inline-block;font-size:13px;color:inherit;opacity:0.7;margin-bottom:4px}
+h1{font-size:20px;margin:0}
+.sub{font-size:13px;opacity:0.7;margin:2px 0 10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="../">← 結び方の一覧</a>
+<h1>自動ロック式トラッカーズ・ヒッチ</h1>
+<p class="sub">トラックの荷台／端をフックに1回くぐらせ、引き解け結びの輪に2回通して引き締める。手を離しても戻らない</p>
+<div id="c" style="position:relative;width:100%;height:440px;touch-action:none;border-radius:12px;background:var(--surface-1);overflow:hidden;cursor:grab"></div>
+<div class="key"><b style="background:#BA7517"></b>荷物の側<b style="background:#2F7FB5"></b>端の側（フックから先）<b style="background:#E24B4A"></b>ロープの端<b style="background:#7F77DD"></b>引く向き</div>
+<div id="cap"></div>
+<div class="row">
+<button class="vb" data-s="0">ロープ</button>
+<button class="vb" data-s="1">1</button>
+<button class="vb" data-s="2">2</button>
+<button class="vb" data-s="3">3</button>
+<button class="vb" data-s="4">4</button>
+<button class="vb on" data-s="5">5</button>
+<button class="vb" data-s="6">6</button>
+<button id="nx" class="vb">次へ</button>
+</div>
+<div class="row">
+<button id="hp" class="vb">荷台を隠す</button>
+<button id="zi" class="vb">拡大 ＋</button>
+<button id="zo" class="vb">縮小 －</button>
+<button id="fs" class="vb">結び目に寄る</button>
+<button id="fa" class="vb">全体</button>
+</div>
+<div class="row">
+<button class="vb" data-t="0" data-p="0.05">正面から</button>
+<button class="vb" data-t="70" data-p="0.1">横から</button>
+<button class="vb" data-t="25" data-p="1.2">上から</button>
+<button class="vb" data-t="-30" data-p="-0.6">下から</button>
+<button id="ar" class="vb">自動回転 切</button>
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const c=document.getElementById('c');
+const W=c.clientWidth||340,H=440;
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.setSize(W,H);
+c.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(40,W/H,0.05,100);
+scene.add(new THREE.AmbientLight(0xffffff,0.75));
+const dl=new THREE.DirectionalLight(0xffffff,0.8);
+dl.position.set(4,8,6);
+scene.add(dl);
+const dl2=new THREE.DirectionalLight(0xffffff,0.35);
+dl2.position.set(-5,-3,-4);
+scene.add(dl2);
+const V=THREE.Vector3;
+const root=new THREE.Group();
+scene.add(root);
+// 荷台: 奥にアオリ（縦の板）、その上に荷物、アオリの下のほうにロープを掛けるフック。ロープは荷物の上から手前に下りてくる。
+const RR=0.09;
+const PZ0=-1.25,PZ1=-1.05,PY0=-5.6,PY1=2.6;
+const BOX={x0:-2,x1:2,y0:PY1,y1:5,z0:-3.5,z1:PZ1};
+const HX=0.66,HY=-4.6,HR=0.07,HZ1=0.1;
+const truck=new THREE.Group();
+const panel=new THREE.Mesh(new THREE.BoxGeometry(6,PY1-PY0,PZ1-PZ0),new THREE.MeshStandardMaterial({color:0x9aa3ad,roughness:0.6,metalness:0.3}));
+panel.position.set(0,(PY0+PY1)/2,(PZ0+PZ1)/2);
+truck.add(panel);
+const box=new THREE.Mesh(new THREE.BoxGeometry(BOX.x1-BOX.x0,BOX.y1-BOX.y0,BOX.z1-BOX.z0),new THREE.MeshStandardMaterial({color:0xc9a77a,roughness:0.8}));
+box.position.set((BOX.x0+BOX.x1)/2,(BOX.y0+BOX.y1)/2,(BOX.z0+BOX.z1)/2);
+truck.add(box);
+// フック: アオリから手前に出る軸と、先が上に反り返った部分。
+const hookPts=[];
+for(let i=0;i<=8;i++)hookPts.push(new V(HX,HY,PZ1+(HZ1-PZ1)*i/8));
+for(let i=1;i<=8;i++){const a=i/8*Math.PI/2;hookPts.push(new V(HX,HY+0.25*(1-Math.cos(a)),HZ1+0.25*Math.sin(a)));}
+for(let i=1;i<=3;i++)hookPts.push(new V(HX,HY+0.25+0.08*i,HZ1+0.25));
+const hm=new THREE.MeshStandardMaterial({color:0x55595f,roughness:0.35,metalness:0.7});
+truck.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(hookPts),80,HR,12,false),hm));
+const plate=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.4,0.04),hm);
+plate.position.set(HX,HY,PZ1+0.02);
+truck.add(plate);
+root.add(truck);
+window._hook=hookPts;
+const om=new THREE.MeshStandardMaterial({color:0xBA7517,roughness:0.7});
+const bm=new THREE.MeshStandardMaterial({color:0x2F7FB5,roughness:0.7});
+const em=new THREE.MeshStandardMaterial({color:0xE24B4A,roughness:0.4});
+const am=new THREE.MeshStandardMaterial({color:0x7F77DD,roughness:0.5});
+const dyn=new THREE.Group();
+root.add(dyn);
+function tube(pts,mat){
+const cv=new THREE.CatmullRomCurve3(pts,false,'centripetal');
+window._curves.push(cv);
+return new THREE.Mesh(new THREE.TubeGeometry(cv,Math.max(200,pts.length*10),RR,12,false),mat);
+}
+function endDot(p){
+const m=new THREE.Mesh(new THREE.SphereGeometry(0.11,14,14),em);
+m.position.copy(p);
+return m;
+}
+function arrowDown(x,y0,y1,z){
+const m=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,y0-y1,10),am);
+m.position.set(x,(y0+y1)/2,z);
+dyn.add(m);
+const cone=new THREE.Mesh(new THREE.ConeGeometry(0.13,0.3,14),am);
+cone.position.set(x,y1-0.15,z);
+cone.rotation.x=Math.PI;
+dyn.add(cone);
+}
+const P=function(x,y,z){return new V(x,y,z||0);};
+// 荷物の上から手前の角を回って、荷物の前を下り、アオリの上端から結び目へ。
+const SX=-0.33;
+function topPart(){
+const a=[P(SX,BOX.y1+RR,-2.6),P(SX,BOX.y1+RR,-1.6)];
+for(let i=0;i<=4;i++){const t=i/4*Math.PI/2;a.push(P(SX,BOX.y1+(RR+0.01)*Math.cos(t),BOX.z1+(RR+0.01)*Math.sin(t)));}
+a.push(P(SX,3.6,BOX.z1+0.12),P(SX,PY1,PZ1+0.17),P(SX,1.5,-0.45),P(SX,0.85,-0.08));
+return a;
+}
+// フックの軸の下をくぐる部分。荷物の側（右の線）から入って、左の線で上へ出る。
+function hookU(){
+const a=[P(0.83,-4.2,-0.18),P(0.83,-4.45,-0.2)];
+for(let i=0;i<=8;i++){const t=-i/8*Math.PI;a.push(P(HX+0.165*Math.cos(t),HY+0.165*Math.sin(t),-0.2));}
+a.push(P(0.495,-4.45,-0.2));
+return a;
+}
+// 引き解け結びの輪（目）。荷物の側のロープが、二つ折り（目）の付け根の2本に1周巻き付き、外側を上って、上から内側に入って目の左の線になる。
+// 目の右の線は付け根を上へ抜けて、フックへ下りる線になる。
+const RG=0.33;
+function slipKnot(){
+const a=[P(SX,0.45)];
+const n=40;
+for(let i=0;i<=n;i++){const g=Math.PI+2.5*Math.PI*i/n;a.push(P(RG*Math.cos(g),0.2-0.2*(g-Math.PI)/(2*Math.PI),RG*Math.sin(g)));}
+a.push(P(0,0.1,-0.55),P(0,0.35,-0.5),P(0,0.47,-0.3),P(-0.07,0.43,-0.08),P(-0.11,0.3),P(-0.11,0),P(-0.11,-0.25),P(-0.32,-0.55));
+for(let i=0;i<=16;i++){const t=Math.PI+i/16*Math.PI;a.push(P(0.5*Math.cos(t),-0.85+0.5*Math.sin(t)));}
+a.push(P(0.32,-0.55),P(0.11,-0.25),P(0.11,0),P(0.11,0.3),P(0.18,0.45,0.08),P(0.45,0.42,0.18),P(0.62,0.1,0.28),P(0.72,-0.5,0.32),P(0.78,-2.5,0.15),P(0.82,-3.9,-0.12));
+return a;
+}
+// 端を目に2回通す: 目の下の曲がった所に、2周巻き付ける（くぐるのが2回）。
+function eyeWraps(){
+const a=[];
+// 目の内側（曲がりの内側）でも巻いた線どうしが離れるよう、1周ごとの間隔を広めにとる。
+const t0=-Math.PI/2+0.65,t1=-Math.PI/2-0.65,n=80;
+for(let i=0;i<=n;i++){const u=i/n,t=t0+(t1-t0)*u,b=4*Math.PI*u;const q=P(0.5*Math.cos(t),-0.85+0.5*Math.sin(t)),rh=P(Math.cos(t),Math.sin(t)),zh=P(0,0,1);a.push(q.addScaledVector(rh,0.19*Math.cos(b)).addScaledVector(zh,0.19*Math.sin(b)));}
+return a;
+}
+// 段階: 0=ロープを下ろす 1=端をフックにくぐらせる 2=小さな輪を作る 3=二つ折りを通して引き解けの輪にする 4=端を輪に2回通す 5=引いて締める 6=引き解けで留める
+const CAP=[
+['荷物の上を通したロープを、荷台の手前に下ろす。反対側の端は、向こう側のフックに留めてある。','根拠：The Bear Essentials、knots3d.com のアニメーション'],
+['端をフックの下にくぐらせ、手前に引き出して、そのまま垂らしておく。フックにかかるのは、この1本だけ。','根拠：The Bear Essentials（手順1）、knots3d.com（先に端をフックに通してから輪を作っている）'],
+['荷物の側のロープ（張る側）の途中に、小さな輪を作る。車のキーを回すように、手首をひねって作る。','根拠：The Bear Essentials（手順2）。輪を作る高さは資料になし。図では、フックまでの間を取りやすいよう高めにしている'],
+['輪の下のロープを二つ折りにして、輪に通す。二つ折りと下のロープを引き合うと、輪が二つ折りの付け根を締め付けて、引き解け結びの輪（目）ができる。図は締めた後の形。','根拠：The Bear Essentials（手順3〜4）。締めた後の結び目の形は、引き解け結びの形から組み立てたもの（推測を含む）'],
+['垂らしておいた端を、下から目に2回通す（目の下の部分に2周巻き付く）。この2回目が「自動ロック」の仕掛け。','根拠：The Bear Essentials「Simply pass the free end twice through the slip knot」。knots3d.com のアニメーションでは、通す回数までは読み取れなかった'],
+['端を下へ引いて締める。手を離しても、目に2周巻いた所の摩擦で止まり、戻らない。引けばまた締まる。','根拠：The Bear Essentials、knots3d.com の説明（調整中にロープが自動的に固定される）。摩擦で止まっているだけなので、必ず次の段階で留める'],
+['張ったまま、端を二つ折りにして、目とフックの間の2本に巻き付け、巻いた所の下にくぐらせる（引き解けのひと結び）。端を引けば、全部が一度にほどける。','根拠：The Bear Essentials（手順6〜8）、knots3d.com のアニメーション（結び目より下の2本の所で留めている）。巻く向きと高さは推測']
+];
+let step=5,hideTruck=false;
+function setCap(t,s){document.getElementById('cap').innerHTML=t+'<div class="src">'+s+'</div>';}
+function addRope(A,B){
+// A＝荷物の側（オレンジ、フックまで）、B＝端の側（青）。つなぎ目の点を共有する。
+dyn.add(tube(A,om));
+const Bf=[A[A.length-1]].concat(B);
+dyn.add(tube(Bf,bm));
+dyn.add(endDot(Bf[Bf.length-1]));
+window._pts=A.concat(B);
+}
+// フックを通った後、手前へ垂れている端。
+function flop(){return [P(0.47,-4.2,0.0),P(0.42,-4.3,0.32),P(0.38,-4.8,0.42),P(0.36,-5.3,0.42)];}
+function build(){
+window._curves=[];
+while(dyn.children.length){const o=dyn.children[0];o.traverse(function(m){if(m.geometry)m.geometry.dispose();});dyn.remove(o);}
+truck.visible=!hideTruck;
+if(step===0){
+const A=topPart().concat([P(SX,0.3),P(SX,-0.6),P(SX,-1.6),P(SX,-2.6),P(SX,-3.4)]);
+dyn.add(tube(A,om));
+dyn.add(endDot(A[A.length-1]));
+window._pts=A;
+return;
+}
+let A;
+if(step===1){
+A=topPart().concat([P(-0.2,0.2,0.02),P(0.3,-1.5,0.02),P(0.75,-3.7,-0.1)]).concat(hookU());
+}else if(step===2){
+// 輪: 荷物の側のロープが左上から下りて輪を描き、上で自分の手前を横切って、右へ出てフックへ下りる。
+A=topPart().concat([P(SX,0.7,-0.06),P(-0.15,0.55,-0.1),P(0,0.42,-0.11),P(0.2,0.33,-0.05),P(0.35,0.05),P(0.25,-0.2),P(0,-0.3),P(-0.25,-0.2),P(-0.35,0.05),P(-0.2,0.33,0.05),P(0,0.42,0.11),P(0.2,0.55,0.08),P(0.5,0.45,0.08),P(0.72,0.05,0.12),P(0.78,-1.5,0.05),P(0.82,-3.9,-0.12)]).concat(hookU());
+}else{
+A=topPart().concat(slipKnot()).concat(hookU());
+}
+let B;
+if(step<=3)B=flop();
+else{
+B=[P(0.47,-4.0,-0.15),P(0.35,-2.6,-0.05),P(0.3,-2.0,0),P(0.38,-1.65,0)].concat(eyeWraps());
+B.push(P(-0.45,-1.8));
+if(step===4)B=B.concat([P(-0.47,-2.5),P(-0.47,-3.1)]);
+else if(step===5){B=B.concat([P(-0.47,-2.6),P(-0.47,-4.0),P(-0.47,-5.3)]);arrowDown(-0.95,-3.6,-5.1,0);}
+else{
+// 引き解けのひと結び: 張った2本（フックへ下りる線と、フックから上がる線）の前を下り、右・後ろ・左と回って、前で自分の下にくぐらせる。
+B=B.concat([P(-0.35,-1.95,0.15),P(0.2,-2.4,0.5),P(0.6,-2.8,0.56),P(0.6,-3.3,0.56),P(0.95,-3.35,0.38),P(1.06,-3.42,0),P(0.95,-3.47,-0.28),P(0.6,-3.5,-0.36),P(0.25,-3.55,-0.28),P(0.13,-3.6,-0.05),P(0.22,-3.66,0.2),P(0.4,-3.7,0.26),P(0.5,-3.55,0.26),P(0.5,-3.0,0.26)]);
+for(let i=1;i<8;i++){const t=Math.PI-i/8*Math.PI;B.push(P(0.6+0.1*Math.cos(t),-3.0+0.1*Math.sin(t),0.26));}
+B=B.concat([P(0.7,-3.0,0.26),P(0.71,-3.6,0.26),P(0.74,-3.85,0.28)]);
+}
+}
+addRope(A,B);
+}
+const tgt=new V(0.3,-1,0),tgtG=new V(0.3,-1,0);
+let th=0.35,ph=0.12,rad=12,radG=12,goT=null,goP=null,auto=false,drag=false,lx=0,ly=0;
+function focusAll(){tgtG.set(0.2,-0.6,-0.8);radG=17;}
+function focusKnot(){if(step===1){tgtG.set(0.3,-2.5,-0.2);radG=10;}else if(step<=3){tgtG.set(0.2,-0.3,0);radG=5;}else if(step===6){tgtG.set(0.4,-2.4,0);radG=8;}else{tgtG.set(0.2,-1.6,0);radG=7;}}
+function setStep(s,keep){
+step=Math.max(0,Math.min(6,s));
+setCap(CAP[step][0],CAP[step][1]);
+build();
+if(!keep){if(step===0)focusAll();else focusKnot();}
+document.querySelectorAll('.vb[data-s]').forEach(function(b){b.classList.toggle('on',parseInt(b.dataset.s)===step);});
+}
+window._setStep=setStep;
+function place(){
+tgt.lerp(tgtG,0.15);
+rad+=(radG-rad)*0.15;
+cam.position.set(tgt.x+rad*Math.cos(ph)*Math.sin(th),tgt.y+rad*Math.sin(ph),tgt.z+rad*Math.cos(ph)*Math.cos(th));
+cam.lookAt(tgt);
+}
+function zoom(f){radG=Math.max(1.5,Math.min(30,radG*f));}
+const ptrs=new Map();
+let pd=0;
+c.addEventListener('pointerdown',function(e){
+ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+c.setPointerCapture(e.pointerId);
+goT=null;goP=null;
+if(ptrs.size===1){drag=true;lx=e.clientX;ly=e.clientY;c.style.cursor='grabbing';}
+if(ptrs.size===2){drag=false;const a=Array.from(ptrs.values());pd=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);}
+});
+function up2(e){
+ptrs.delete(e.pointerId);
+if(ptrs.size===0){drag=false;c.style.cursor='grab';}
+if(ptrs.size===1){const a=Array.from(ptrs.values())[0];lx=a.x;ly=a.y;drag=true;}
+}
+c.addEventListener('pointerup',up2);
+c.addEventListener('pointercancel',up2);
+c.addEventListener('pointermove',function(e){
+if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+if(ptrs.size===2){
+const a=Array.from(ptrs.values());
+const d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
+if(pd>0&&d>0){zoom(pd/d);}
+pd=d;
+return;
+}
+if(!drag)return;
+th-=(e.clientX-lx)*0.012;
+ph=Math.max(-1.5,Math.min(1.5,ph+(e.clientY-ly)*0.012));
+lx=e.clientX;ly=e.clientY;
+});
+c.addEventListener('wheel',function(e){e.preventDefault();zoom(e.deltaY>0?1.12:0.89);},{passive:false});
+document.querySelectorAll('.vb[data-s]').forEach(function(b){
+b.addEventListener('click',function(){setStep(parseInt(b.dataset.s),false);});
+});
+document.getElementById('nx').addEventListener('click',function(){setStep(step>=6?0:step+1,false);});
+document.getElementById('zi').addEventListener('click',function(){zoom(0.7);});
+document.getElementById('zo').addEventListener('click',function(){zoom(1.4);});
+document.getElementById('fs').addEventListener('click',focusKnot);
+document.getElementById('fa').addEventListener('click',focusAll);
+document.getElementById('hp').addEventListener('click',function(){
+hideTruck=!hideTruck;
+this.textContent=hideTruck?'荷台を出す':'荷台を隠す';
+truck.visible=!hideTruck;
+});
+document.querySelectorAll('.vb[data-t]').forEach(function(b){
+b.addEventListener('click',function(){
+goT=parseFloat(b.dataset.t)*Math.PI/180;
+goP=parseFloat(b.dataset.p);
+auto=false;
+document.getElementById('ar').textContent='自動回転 切';
+});
+});
+document.getElementById('ar').addEventListener('click',function(){
+auto=!auto;goT=null;goP=null;
+this.textContent=auto?'自動回転 入':'自動回転 切';
+});
+window.addEventListener('resize',function(){const w=c.clientWidth||340;renderer.setSize(w,H);cam.aspect=w/H;cam.updateProjectionMatrix();});
+function wrap(a){while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;return a;}
+function loop(){
+requestAnimationFrame(loop);
+if(auto&&!drag)th+=0.01;
+if(goT!==null){
+const d=wrap(goT-th);
+th+=d*0.15;
+ph+=(goP-ph)*0.15;
+if(Math.abs(d)<0.005&&Math.abs(goP-ph)<0.005){th=goT;ph=goP;goT=null;goP=null;}
+}
+place();
+renderer.render(scene,cam);
+}
+setStep(5,false);
+loop();
+</script>
+</body>
+</html>
