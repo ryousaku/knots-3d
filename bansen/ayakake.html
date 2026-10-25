@@ -114,7 +114,8 @@ m.position.copy(p);
 return m;
 }
 // 斜めの面で切った2本の単管の外形（楕円2つの凸包）。上端から左回りに一周する点列。
-const RU=0.707+WR+0.01,RY=0.5+WR+0.01;
+// 番線の中心が、どこでも単管の表面から線の太さ（WR）以上離れるようにする。斜めの向きは √2 倍。
+const RC=r+WR+0.008,RU=RC*Math.SQRT2+0.005,RY=RC;
 const hull=(function(){
 const raw=[];
 for(let d=90;d<=180;d+=3){const t=d*Math.PI/180;raw.push([RU*Math.cos(t),1+RY*Math.sin(t)]);}
@@ -129,7 +130,7 @@ const G=6,HM=hull.length-1;
 // 裏の交点で重ならないよう、足2は番線1本分だけ外側を通す。
 function hullPath(leg){
 const a=[];
-const ku=leg===1?1:(RU+2*WR)/RU,ky=leg===1?1:(RY+2*WR)/RY;
+const ku=leg===1?1:(RU+2.3*WR)/RU,ky=leg===1?1:(RY+2.3*WR)/RY;
 for(let i=G;i<=HM-G;i++){
 const c=hull[i][1]>=0.5?1:0;
 const u=hull[i][0]*ku,y=(hull[i][1]-c)*ky+c;
@@ -137,7 +138,8 @@ a.push(leg===1?P(u,y,0):P(0,y,u));
 }
 return a;
 }
-const yT=1+RY+0.07,PITCH=0.22,HR=0.05;
+// 4本が隣の線と斜めにずれた所でも触れ合わない（中心間が線2本分以上）よう、1回転あたりの長さ PITCH も十分にとる。
+const yT=1+RY+0.07+2.3*WR,PITCH=0.5,HR=0.06;
 function helix(ph,y0,y1,turns){
 const a=[];
 for(let i=0;i<=40;i++){const t=i/40;const g=ph+t*turns*2*Math.PI;a.push(new V(HR*Math.cos(g),y0+(y1-y0)*t,HR*Math.sin(g)));}
@@ -175,7 +177,7 @@ let animQ=null,anim=null,lastB=0;
 const CAP=[
 ['人形番線（二つ折りの番線）。折り目が輪になっている。足は片方が少し長い。','根拠：hayasaru の写真'],
 ['左上から奥へ入れたもう片方の足を、2とは反対の斜めに裏を渡らせ、右下の隙間から前へ戻す。裏で1本目と×に交差する（これがあや掛け）。余りの2本は輪の根元で交差させて垂らす。「裏から」で×が見える。','根拠：hayasaru（「人形の股の部分を差し込み、後ろをあや掛け（ばってん）にして前に持ってきます」と表側・裏側の写真）、足場ベストパートナー（反対側から見るとバッテン）。2本の足が別々の斜めを回る形は、この2つの記述からの読み取り（推測を含む）'],
-['輪にシノを約2cm差し、手前の単管に沿って寝かせる。余りの2本は輪のすぐ横でシノの上に掛け、左手で押さえる。ここから先は斜め1周の締め方と同じ。','根拠：hayasaru の写真、中央ビルト工業。あや掛けでも回し方は同じ（hayasaru「時計回りは、一緒です」）'],
+['輪にシノを約2cm差し、手前の単管に沿って寝かせる。余りの2本は、輪の外側を回ってから（輪はくぐらない）、輪のすぐ横のシノの先端側でシノの上に掛け、左手で押さえる。ここから先は斜め1周の締め方と同じ。','根拠：hayasaru の写真、中央ビルト工業。あや掛けでも回し方は同じ（hayasaru「時計回りは、一緒です」）'],
 ['シノを時計回りに半回転。シノに掛かった余りの2本が反対側へ運ばれ、輪の側の2本に巻き付き始める。','根拠：この形は4と6の間を補った図（推測）。半回転ずつ回す動きはクロス縛りの動画で確認'],
 ['回し続けると、4本がまとめてねじれて縄になる。半回転ずつシノを持ち直して回す。','根拠：中央ビルト工業、クロス縛りの動画'],
 ['輪が2回転ほどで締まる。すき間がなくなってから半回転が目安。締めすぎると切れる。シノは手前に少し引き込む。','根拠：中央ビルト工業、足場ベストパートナー'],
@@ -191,9 +193,9 @@ let step=4,hidePipes=false;
 function hairpin(){
 // 人形番線: 折り目が輪。足は片方が少し長く、軽く開いている。
 const a=[];
-for(let x=3.0;x>=-2.5;x-=0.5)a.push(new V(x,-0.03-0.05*(x+2.5)/5.5,0));
+for(let x=3.0;x>=-2.5;x-=0.5)a.push(new V(x,-0.05-0.05*(x+2.5)/5.5,0));
 a.push(new V(-2.75,-0.1,0),new V(-3.0,-0.1,0),new V(-3.08,0,0),new V(-3.0,0.1,0),new V(-2.75,0.1,0));
-for(let x=-2.5;x<=2.5;x+=0.5)a.push(new V(x,0.03+0.25*(x+2.5)/5,0));
+for(let x=-2.5;x<=2.5;x+=0.5)a.push(new V(x,0.05+0.25*(x+2.5)/5,0));
 dyn.add(tube(a,WR));
 dyn.add(endDot(a[0]));dyn.add(endDot(a[a.length-1]));
 }
@@ -201,7 +203,8 @@ dyn.add(endDot(a[0]));dyn.add(endDot(a[a.length-1]));
 function bendP(p){
 const h=p.y-yT;
 if(h<=0)return p;
-const R0=0.12,A=75*Math.PI/180;
+// 曲げる半径が小さいと、内側の線が押し縮められて重なるので、大きめにする。
+const R0=0.3,A=60*Math.PI/180;
 const s=Math.min(h,R0*A),ex=h-s,psi=s/R0;
 return new V(R0-R0*Math.cos(psi)+p.x*Math.cos(psi)+ex*Math.sin(psi),yT+R0*Math.sin(psi)-p.x*Math.sin(psi)+ex*Math.cos(psi),p.z);
 }
@@ -224,8 +227,9 @@ const leg=function(h,full,o){
 if(full){
 const t=h[h.length-1].clone().sub(h[h.length-2]).normalize();
 const e=h[h.length-1];
+// 余りは手前の単管の表面に沿って下へ垂らす（単管の中に入らない高さを保つ）。
 const c=new V(0.05,yS+0.08,0);
-return {wrap:h,spare:[h[h.length-2],e,e.clone().addScaledVector(t,0.1).add(new V(0,0.06,0)),c.clone().add(new V(o,0,0.25)),c.clone().add(new V(0.1+o,-0.25,0.7)),c.clone().add(new V(0.15+o,-0.8,1.3))]};
+return {wrap:h,spare:[h[h.length-2],e,e.clone().addScaledVector(t,0.1).add(new V(0,0.06,0)),c.clone().add(new V(o,0,0.25)),new V(c.x+0.1+o,1+r+WR+0.06,0.7),new V(c.x+0.15+o,1+r+WR+0.06,1.3)]};
 }
 const k=Math.round(h.length*0.45);
 const t=h[k].clone().sub(h[k-1]).normalize();
@@ -241,53 +245,69 @@ dyn.add(endDot(A.spare[A.spare.length-1]));dyn.add(endDot(B.spare[B.spare.length
 return;
 }
 const q=animQ||ST[step];
-const turns=q.turns,L=0.08+PITCH*turns,yTop=yT+L;
+const turns=q.turns,Lk=0.08+PITCH*turns,yTop=yT+Lk;
 const tw=turns*2*Math.PI;
-// 4本の位相: 輪側2本（足1は -UX、足2は -NX の向きから来る）と余り側2本（+UX、+NX から来る）
+// 4本がねじれに入る位置（ねじれの軸のまわりの角度）。単管から来る向きに合わせる。
+// あや掛けでは、輪の側の2本は135度と225度、余りの2本は315度と45度の向きから来るので、その向きのまま入る。
+// 輪の側の2本のまん中が180度なので、輪に通したシノ（w の向き）は、最初は手前の単管に沿う（hayasaru の写真）。
 const pL1=Math.PI*0.75,pL2=Math.PI*1.25,pF1=Math.PI*1.75,pF2=Math.PI*0.25;
 const L1=helix(pL1,yT,yTop,turns),L2=helix(pL2,yT,yTop,turns),F1=helix(pF1,yT,yTop,turns),F2=helix(pF2,yT,yTop,turns);
-// シノを差した輪（ねじれの先端）。シノと一緒に回る。
-const phiS=Math.PI+tw;
-const dh=new V(Math.cos(phiS),0,Math.sin(phiS));
-const w=new V(-Math.sin(phiS),0,Math.cos(phiS));
-const eyeR=0.16;
-const ec=new V(0,yTop+eyeR+0.02,0);
+const dirA=function(a){return new V(Math.cos(a),0,Math.sin(a));};
+// 輪の側の2本のまん中の向き（uL）と、それに直角な水平の向き（w）。輪は uL と上下でできる面に立ち、シノは w の向きに輪を通る。
+const uL=dirA(Math.PI+tw),w=new V(-uL.z,0,uL.x);
+const eyeR=0.16,ec=new V(0,yTop+eyeR+0.11,0);
+// 輪: L1 の先から上へ回って L2 の先へ戻る1巻き。2本の足は w の向きにずれている。
+const e1=L1[L1.length-1],e2=L2[L2.length-1];
 const eye=[];
-for(let k=0;k<=24;k++){const b=(2*Math.PI-0.5)-k/24*(2*Math.PI-1);eye.push(ec.clone().addScaledVector(w,eyeR*Math.sin(b)).addScaledVector(YX,-eyeR*Math.cos(b)));}
-const loopPart=[hL1.clone().lerp(new V(0,yT,0),0.5).setY(yT-0.02)].concat(L1).concat(eye).concat(L2.slice().reverse()).concat([hL2.clone().lerp(new V(0,yT,0),0.5).setY(yT-0.02)]);
+const s1=e1.dot(w),s2=e2.dot(w);
+for(let k=1;k<24;k++){const b=-Math.PI/2+2*Math.PI*k/24;eye.push(ec.clone().addScaledVector(uL,eyeR*Math.cos(b)).addScaledVector(YX,eyeR*Math.sin(b)).addScaledVector(w,s1+(s2-s1)*k/24));}
+// 単管から来た線がねじれに入るまで。
+// 単管の上から、ねじれの軸のまわりを外側から回り込んで入口へ。角度と半径を少しずつ変えて、ほかの線の入口をかすめないようにする。
+const entry=function(h,p0){
+const a0=Math.atan2(h.z,h.x),r0=Math.hypot(h.x,h.z),a1=Math.atan2(p0.z,p0.x),r1=Math.hypot(p0.x,p0.z);
+let da=a1-a0;while(da>Math.PI)da-=2*Math.PI;while(da<-Math.PI)da+=2*Math.PI;
+const out=[];
+for(const f of [0.4,0.75]){const ang=a0+da*f,rad=r0+(r1-r0)*f*f;out.push(new V(rad*Math.cos(ang),h.y+(yT-0.02-h.y)*f,rad*Math.sin(ang)));}
+return out;};
+const loopPart=entry(hL1,L1[0]).concat(L1).concat(eye).concat(L2.slice().reverse()).concat(entry(hL2,L2[0]).reverse());
+const free1=entry(hF1,F1[0]),free2=entry(hF2,F2[0]);
 let fe1,fe2;
-// 余りの2本は輪のすぐ横（シノの先端側）でシノの上に掛け、左手で押さえて垂らす（hayasaru の写真、中央ビルト工業）。
-// シノを回すと、輪と一緒にこの2本も運ばれて、4本がまとめてねじれる。
-const dS=dh.clone().add(new V(0,q.tilt||0.45,0)).normalize();
-const e2=new V().crossVectors(dS,w).normalize();
-if(e2.y<0)e2.negate();
-const side=w.clone().negate();
-const drape=function(F,o){
-const a=[];
-a.push(ec.clone().addScaledVector(dS,-0.12+o).addScaledVector(e2,0.12).addScaledVector(side,-0.04));
-a.push(ec.clone().addScaledVector(dS,-0.15+o).addScaledVector(e2,0.03).addScaledVector(side,0.13));
-for(let i=1;i<=5;i++)a.push(ec.clone().addScaledVector(dS,-0.15+o-0.12*i).addScaledVector(e2,-0.06*Math.min(i,3)).addScaledVector(side,0.13+0.38*i));
-return a;
-};
-const tailDir=dh.clone().negate().add(new V(0,0.7,0)).normalize();
-const tail=function(F,o){const t=F[F.length-1];const a=[];for(let i=1;i<=6;i++){a.push(t.clone().addScaledVector(tailDir,0.4*i).addScaledVector(w,o*(1+i*0.3)).add(new V(0,-0.02*i*i,0)));}return a;};
-if(q.cut){
-fe1=F1.concat([F1[F1.length-1].clone().addScaledVector(tailDir,0.06)]);
-fe2=F2.concat([F2[F2.length-1].clone().addScaledVector(tailDir,0.06)]);
+const tipDir=w.clone().negate();
+const yMin=1+r+0.12;
+if(!q.cut&&!q.loose){
+// シノを輪に差す。シノは w の向きに水平（少し手前へ起こす）。輪の中心から先端まで約2cm（0.25）。
+const dS=w.clone().add(new V(0,q.tilt||0,0)).normalize();
+// 余りの2本は、輪よりシノの先端側でシノの上に掛け、輪の側（uL）へ下ろして、左手で押さえて外へ引く。
+// 余りの2本は、ねじれの先から輪と反対の側（-uL）へ出て、輪の外側を回り、シノの先端側でシノの上に掛ける。
+// F1 は輪をはさんでシノの根元側から出るので、輪の外（輪の半径＋線の太さより外）を通って先端側へ移る。輪はくぐらない。
+// pre: 出始めの、シノの軸の向きのずれ。2本の並び順（F1 が根元側、F2 が先端側）を保つ。
+const over=function(F,o,pre){
+const t=F[F.length-1];
+const Q=ec.clone().addScaledVector(dS,o).addScaledVector(YX,0.09);
+const a=[t.clone().add(new V(0,0.06,0)).addScaledVector(uL,-0.1).addScaledVector(dS,pre),ec.clone().addScaledVector(dS,o).addScaledVector(uL,-(eyeR+0.09)),ec.clone().addScaledVector(dS,o).addScaledVector(uL,-0.1).addScaledVector(YX,0.07),Q,ec.clone().addScaledVector(dS,o).addScaledVector(uL,0.1).addScaledVector(YX,0.03)];
+for(let i=1;i<=4;i++){const pnt=ec.clone().addScaledVector(dS,o).addScaledVector(uL,0.1+0.3*i).addScaledVector(YX,-0.03*i*i);pnt.y=Math.max(pnt.y,yMin);a.push(pnt);}
+return a;};
+// F2 のほうがシノの先端側にいるので、F2 を先端寄りに掛ける（2本が途中で入れ替わらないように）。
+fe1=F1.concat(over(F1,-0.22,0));
+fe2=F2.concat(over(F2,-0.32,-0.05));
+dyn.add(shino(ec.clone().addScaledVector(dS,-0.45),dS));
+arrow(Math.PI+tw+0.3,yTop+0.6,1.5);
 }else if(q.loose){
-fe1=F1.concat(tail(F1,-0.05));
-fe2=F2.concat(tail(F2,0.05));
+// シノを抜いた後。余りの2本は、輪と反対の側へ長いまま伸びている。
+const tail=function(F,o){const t=F[F.length-1];const a=[];for(let i=1;i<=5;i++){const pnt=t.clone().addScaledVector(uL,-(0.12+0.3*i)).addScaledVector(w,o*i).add(new V(0,0.04-0.02*i*i,0));pnt.y=Math.max(pnt.y,yMin);a.push(pnt);}return a;};
+// F1 は w の側、F2 はその反対側にいるので、その向きに開いていく。
+fe1=F1.concat(tail(F1,0.03));
+fe2=F2.concat(tail(F2,-0.03));
 }else{
-fe1=F1.concat(drape(F1,-0.04));
-fe2=F2.concat(drape(F2,0.04));
-dyn.add(shino(ec.clone().addScaledVector(dS,-0.3),dS));
-arrow(phiS+0.3,yTop+0.5,1.5);
+fe1=F1.concat([F1[F1.length-1].clone().addScaledVector(uL,-0.06).add(new V(0,0.02,0))]);
+fe2=F2.concat([F2[F2.length-1].clone().addScaledVector(uL,-0.06).add(new V(0,0.02,0))]);
 }
-const free1=[hF1.clone().lerp(new V(0,yT,0),0.5).setY(yT-0.02)],free2=[hF2.clone().lerp(new V(0,yT,0),0.5).setY(yT-0.02)];
-let core=free1.concat(h1.slice().reverse()).concat(loopPart).concat(h2).concat(free2);
+// オレンジ（単管に巻く部分と輪の側）は単管の上で終わり、そこから先の余りは青で続ける。つなぎ目は単管の上の1区間だけ重ねる。
+let core=h1.slice().reverse().concat(loopPart).concat(h2);
 if(q.cut){core=core.map(bendP);fe1=fe1.map(bendP);fe2=fe2.map(bendP);}
 dyn.add(tube(core,WR));
-const b1=free1.concat(fe1),b2=free2.concat(fe2);
+const b1=[h1[h1.length-2],hF1].concat(free1).concat(fe1),b2=[h2[h2.length-2],hF2].concat(free2).concat(fe2);
+if(q.cut){b1.splice(0,2,bendP(h1[h1.length-2]),bendP(hF1));b2.splice(0,2,bendP(h2[h2.length-2]),bendP(hF2));}
 dyn.add(tube(b1,WR,fm));
 dyn.add(tube(b2,WR,fm));
 dyn.add(endDot(b1[b1.length-1]));
@@ -374,6 +394,8 @@ document.getElementById('ar').addEventListener('click',function(){
 auto=!auto;goT=null;goP=null;
 this.textContent=auto?'自動回転 入':'自動回転 切';
 });
+// 画面の幅が変わったら（携帯の向きを変えたときなど）、描く大きさを合わせ直す。
+window.addEventListener('resize',function(){const w=c.clientWidth||340;renderer.setSize(w,H);cam.aspect=w/H;cam.updateProjectionMatrix();});
 function wrap(a){while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;return a;}
 function loop(){
 requestAnimationFrame(loop);
