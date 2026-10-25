@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>箱縛り｜番線｜結び方 3D</title>
+<style>
+:root{--surface-0:#ffffff;--surface-1:#f3f2ee;--surface-2:#e9e7e0;--text-primary:#1f1e1c;--border-strong:#b4b2a9;--border-stronger:#5f5e5a;--radius:8px;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root{--surface-0:#2c2c2a;--surface-1:#1f1e1c;--surface-2:#3a3936;--text-primary:#f1efe8;--border-strong:#5f5e5a;--border-stronger:#b4b2a9}}
+body{margin:0;padding:12px;background:var(--surface-0);color:var(--text-primary);font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
+.wrap{max-width:720px;margin:0 auto}
+.vb{font-size:13px;padding:6px 12px;border:0.5px solid var(--border-strong);border-radius:var(--radius);background:var(--surface-2);color:var(--text-primary);cursor:pointer}
+.vb.on{background:var(--surface-0);border-color:var(--border-stronger)}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+#cap{margin-top:8px;font-size:14px;line-height:1.6;min-height:4.8em}
+#cap .src{font-size:12px;opacity:0.7}
+.key{font-size:12px;margin-top:6px;opacity:0.8}
+.key b{display:inline-block;width:10px;height:10px;border-radius:5px;margin:0 4px 0 10px;vertical-align:middle}
+.key b:first-child{margin-left:0}
+.back{display:inline-block;font-size:13px;color:inherit;opacity:0.7;margin-bottom:4px}
+h1{font-size:20px;margin:0}
+.sub{font-size:13px;opacity:0.7;margin:2px 0 10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="../">← 結び方の一覧</a>
+<h1>箱縛り</h1>
+<p class="sub">単管に載せた足場板／板の上を番線2本で渡し、両端で単管に掛けて、板の端でねじってシノで締める</p>
+<div id="c" style="position:relative;width:100%;height:440px;touch-action:none;border-radius:12px;background:var(--surface-1);overflow:hidden;cursor:grab"></div>
+<div class="key"><b style="background:#BA7517"></b>板と単管に掛ける部分<b style="background:#2F7FB5"></b>両端（ねじる部分と余り）<b style="background:#E24B4A"></b>切り口<b style="background:#7F77DD"></b>シノを回す向き</div>
+<div id="cap"></div>
+<div class="row">
+<button class="vb" data-s="0">番線</button>
+<button class="vb" data-s="1">1</button>
+<button class="vb" data-s="2">2</button>
+<button class="vb" data-s="3">3</button>
+<button class="vb" data-s="4">4</button>
+<button class="vb on" data-s="5">5</button>
+<button class="vb" data-s="6">6</button>
+<button class="vb" data-s="7">7</button>
+<button id="nx" class="vb">次へ</button>
+<button id="pl" class="vb">回して見る</button>
+</div>
+<div class="row">
+<button id="hp" class="vb">板と単管を隠す</button>
+<button id="zi" class="vb">拡大 ＋</button>
+<button id="zo" class="vb">縮小 －</button>
+<button id="fs" class="vb">寄る</button>
+<button id="fa" class="vb">全体</button>
+</div>
+<div class="row">
+<button class="vb" data-t="57" data-p="0.5">斜めから</button>
+<button class="vb" data-t="90" data-p="0.15">結び目の正面から</button>
+<button class="vb" data-t="0" data-p="0.1">横から</button>
+<button class="vb" data-t="0" data-p="1.4">上から</button>
+<button class="vb" data-t="-90" data-p="0.2">奥の端から</button>
+<button id="ar" class="vb">自動回転 切</button>
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const c=document.getElementById('c');
+const W0=c.clientWidth||340,H0=440;
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.setSize(W0,H0);
+c.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(40,W0/H0,0.05,100);
+scene.add(new THREE.AmbientLight(0xffffff,0.75));
+const dl=new THREE.DirectionalLight(0xffffff,0.8);
+dl.position.set(6,8,5);
+scene.add(dl);
+const dl2=new THREE.DirectionalLight(0xffffff,0.35);
+dl2.position.set(-5,-3,-4);
+scene.add(dl2);
+const V=THREE.Vector3;
+// 単管（直径48.6mm）を半径 r=0.5 とする縮尺。単管は x 方向。足場板（幅240mm、厚さ約35mm）はその上に、長さを z 方向にして載る。
+// 番線を締める人は、板の手前の端（+x 側）に立つ。
+const r=0.5,PL=14;
+const W=4.9,T=0.7,LEN=12;
+const solids=new THREE.Group();
+const pipe=new THREE.Mesh(new THREE.CylinderGeometry(r,r,PL,32),new THREE.MeshStandardMaterial({color:0xb9bdc3,roughness:0.5,metalness:0.2}));
+pipe.rotation.z=Math.PI/2;
+solids.add(pipe);
+// 板は、オレンジの番線と見分けやすい淡い色にする。
+const board=new THREE.Mesh(new THREE.BoxGeometry(W,T,LEN),new THREE.MeshStandardMaterial({color:0xE2DACB,roughness:0.85,metalness:0}));
+board.position.y=r+T/2;
+solids.add(board);
+scene.add(solids);
+const wm=new THREE.MeshStandardMaterial({color:0xBA7517,roughness:0.5,metalness:0.3});
+const fm=new THREE.MeshStandardMaterial({color:0x2F7FB5,roughness:0.5,metalness:0.3});
+const sm=new THREE.MeshStandardMaterial({color:0x6b6a65,roughness:0.35,metalness:0.7});
+const em=new THREE.MeshStandardMaterial({color:0xE24B4A,roughness:0.4});
+const am=new THREE.MeshStandardMaterial({color:0x7F77DD,roughness:0.5});
+const dyn=new THREE.Group();
+scene.add(dyn);
+const WR=0.035;
+// 確認用: 描いた線とシノの点をすべて記録しておく（板・単管へのめり込みを調べるため）。
+window._pts=[];
+function tube(pts,mat){
+const cv=new THREE.CatmullRomCurve3(pts,false,'centripetal');
+window._pts.push.apply(window._pts,cv.getSpacedPoints(400));
+return new THREE.Mesh(new THREE.TubeGeometry(cv,Math.max(200,pts.length*12),WR,10,false),mat);
+}
+function endDot(p){
+const m=new THREE.Mesh(new THREE.SphereGeometry(0.06,14,14),em);
+m.position.copy(p);
+return m;
+}
+// 番線の通り道。板の上面を2本（z=+s と z=-s）が渡り、板の両端の外側で単管に1巻きずつ掛かる。
+// 番線の中心は、板と単管の表面から線の太さ（WR）より少し外を通る。
+const e=WR+0.008,s=0.07,rw=r+e,yTop=r+T;
+const phi0=Math.asin(s/rw);
+const path=(function(){
+const a=[];
+const arc=function(cx,cy,a0,a1,z){for(let i=0;i<=6;i++){const g=(a0+(a1-a0)*i/6)*Math.PI/180;a.push(new V(cx+e*Math.cos(g),cy+e*Math.sin(g),z));}};
+const line=function(p0,p1,n){for(let i=1;i<n;i++)a.push(p0.clone().lerp(p1,i/n));};
+// 板の上面（z=+s）を手前から奥へ
+a.push(new V(W/2,yTop+e,s));
+line(new V(W/2,yTop+e,s),new V(-W/2,yTop+e,s),24);
+arc(-W/2,yTop,90,180,s);
+// 奥の端の面を下りる
+line(new V(-W/2-e,yTop,s),new V(-W/2-e,rw*Math.cos(phi0)+0.02,s),5);
+// 奥の端の外で、単管に1巻き（z が + の側から下を通って - の側へ）
+for(let i=0;i<=36;i++){const f=phi0+(2*Math.PI-2*phi0)*i/36;a.push(new V(-W/2-e,rw*Math.cos(f),rw*Math.sin(f)));}
+// 奥の端の面を上がる
+line(new V(-W/2-e,rw*Math.cos(phi0)+0.02,-s),new V(-W/2-e,yTop,-s),5);
+arc(-W/2,yTop,180,90,-s);
+// 板の上面（z=-s）を奥から手前へ
+line(new V(-W/2,yTop+e,-s),new V(W/2,yTop+e,-s),24);
+arc(W/2,yTop,90,0,-s);
+// 手前の端の面を下りる
+line(new V(W/2+e,yTop,-s),new V(W/2+e,rw*Math.cos(phi0)+0.02,-s),5);
+// 手前の端の外で、単管に1巻き（z が - の側から下を通って + の側へ）
+for(let i=0;i<=36;i++){const f=-phi0-(2*Math.PI-2*phi0)*i/36;a.push(new V(W/2+e,rw*Math.cos(f),rw*Math.sin(f)));}
+return a;
+})();
+// 手前の端の結び目。ねじれの軸 d は板の端から外向き（水平）。
+const K=new V(W/2+0.22,r+T*0.6,s);
+const d=new V(1,0,0),u=new V(0,1,0),rt=new V(0,0,-1);
+// 角度 α は、締める人から見て上（u）から右（rt）へ時計回りに測る。
+const HR=0.05;
+function axisPt(sx,al,rad){return K.clone().addScaledVector(d,sx).addScaledVector(u,rad*Math.cos(al)).addScaledVector(rt,rad*Math.sin(al));}
+function dirAt(al){return u.clone().multiplyScalar(Math.cos(al)).addScaledVector(rt,Math.sin(al));}
+function shino(tip,dir){
+const g=new THREE.Group();
+const rod=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.03,4.5,24),sm);
+rod.position.y=2.25;
+g.add(rod);
+const head=new THREE.Mesh(new THREE.TorusGeometry(0.32,0.11,10,28),sm);
+head.position.y=4.5+0.38;
+g.add(head);
+g.quaternion.setFromUnitVectors(new V(0,1,0),dir);
+g.position.copy(tip);
+for(let i=0;i<=40;i++)window._pts.push(tip.clone().addScaledVector(dir,5.2*i/40));
+return g;
+}
+function arrow(ctr,al0){
+const pts=[];
+const R=1.2;
+for(let i=0;i<=40;i++){const g=al0+Math.PI*1.2*i/40;pts.push(ctr.clone().addScaledVector(dirAt(g),R));}
+dyn.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),80,0.035,8,false),am));
+const cone=new THREE.Mesh(new THREE.ConeGeometry(0.11,0.3,14),am);
+cone.position.copy(pts[pts.length-1]);
+cone.quaternion.setFromUnitVectors(new V(0,1,0),pts[pts.length-1].clone().sub(pts[pts.length-2]).normalize());
+dyn.add(cone);
+}
+// 段階: 0=番線だけ 1=板に渡して両端で単管に掛ける 2=手前の端で交差させて180度ひねる 3=シノを根元に当て両端を巻き付ける
+// 4=180度回す 5=差し直して繰り返す 6=シノを抜く 7=余りを切る
+const ST=[null,null,{tw:0.5},{tw:0.5,shino:true},{tw:1,shino:true},{tw:2,shino:true},{tw:2,ring:true},{tw:2,ring:true,cut:true}];
+const CAP=[
+['番線。図では1本もの（両端が切り口）にしている。','根拠：動画では番線の形（1本ものか二つ折りか）は見分けられない（推測）'],
+['単管の上に載せた足場板に、番線を渡す。板の上面を2本が通り、板の両端の外側で、それぞれ単管に1巻きずつ掛ける。両端は手前の端に出しておく。','根拠：手前の端の外で単管に巻き付けていること、板の上面を2本が渡ることは、動画「【番線シリーズ】箱縛り」「【簡単】これで一瞬。番線の締め方『箱縛り』」で確認。奥の端でも同じように単管に掛けているのは、上面に2本渡っていることからの推測'],
+['手前の端で、単管のすぐ上で2本を交差させ、時計回りに180度ひねる。','根拠：結び目が板の端、単管のすぐ上にできることは動画で確認。ひねり方は板2枚の縛り方（藤羽）と同じにした（推測）'],
+['交差部の根元にシノを当て、両端をシノに巻き付けて輪を作る。シノは板の端に沿って横向きに当てる。','根拠：動画で「最初に輪っかを作っちゃいます」「あとはいつも通り」と言っている。輪の作り方は藤羽の締め方に合わせた（推測）'],
+['シノを、上側を通って時計回りに180度回す。巻き付けた番線が、根元のねじれに巻き込まれていく。','根拠：回す向きは藤羽（右利きは時計回り）。下には単管があるので上側を回し、半周ごとに差し直す形にした（推測）'],
+['シノを差し直して、同じように回すのを繰り返す。締めすぎると切れる。','根拠：藤羽、中央ビルト工業。回す回数は資料に数値なし（図は2回転）'],
+['シノを抜く。余りの2本は外へ伸びている。','根拠：推測（動画では、この場面ははっきり映っていない）'],
+['余りを短く切る。板の端の結び目から、板の上面に2本が渡る形になる。','根拠：完成の形は動画の最後の場面で確認。余りを短く切ることは中央ビルト工業、足場ベストパートナー。残す長さは資料に数値なし']
+];
+function setCap(t,sr){document.getElementById('cap').innerHTML=t+'<div class="src">'+sr+'</div>';}
+let step=5,hideSolid=false,animQ=null,anim=null,lastB=0;
+function clear(){window._pts=[];while(dyn.children.length){const o=dyn.children[0];o.traverse(function(m){if(m.geometry)m.geometry.dispose();});dyn.remove(o);}}
+const N=path.length;
+// 余りが単管の上に垂れるときの、いちばん低い高さ（単管の表面から線の太さ＋すき間）。
+function restY(z){const rr=r+WR+0.03;return Math.sqrt(Math.max(0,rr*rr-z*z))+0.0;}
+function build(){
+clear();
+if(step===0){
+const L=13,X=1.2,Y=yTop+2;
+const mid=[],a=[],b=[];
+for(let i=0;i<=26;i++)mid.push(new V(-L/2+L*i/26,Y,2.5));
+for(let i=0;i<=4;i++){a.push(new V(-L/2-X+X*i/4,Y,2.5));b.push(new V(L/2+X*i/4,Y,2.5));}
+dyn.add(tube(mid,wm));dyn.add(tube(a,fm));dyn.add(tube(b,fm));
+dyn.add(endDot(a[0]));dyn.add(endDot(b[b.length-1]));
+return;
+}
+dyn.add(tube(path,wm));
+// 端1: 手前の角（z=+s）から。端2: 手前の単管の巻きの終わり（z=+s、単管の上）から。
+const c1=path[0],c1b=path[1],q2=path[N-1],q2b=path[N-2];
+if(step===1){
+// まだ交差させていない。端1は手前の角から上へ立てておく。
+const t1=[c1b,c1,new V(W/2+e*0.7,yTop+e*0.7,s),new V(W/2+e+0.01,yTop+0.3,s),new V(W/2+e+0.03,yTop+1.0,s)];
+const t2=[q2b,q2,new V(W/2+e+0.15,q2.y+0.04,s),new V(W/2+0.7,q2.y+0.07,s),new V(W/2+1.3,q2.y+0.09,s)];
+dyn.add(tube(t1,fm));dyn.add(tube(t2,fm));
+dyn.add(endDot(t1[t1.length-1]));dyn.add(endDot(t2[t2.length-1]));
+return;
+}
+const q=animQ||ST[step];
+const tw=q.tw,Lt=0.06+0.14*tw;
+const st=function(al0){const a=[];for(let i=0;i<=30;i++){const t=i/30;a.push(axisPt(Lt*t,al0+2*Math.PI*tw*t,HR));}return a;};
+// 端1は上から、端2は下からねじれに入る。
+// 端1は手前の角を回って面を下りてから、上からねじれに入る。
+const corner=[];for(let i=1;i<=5;i++){const g=(90-90*i/5)*Math.PI/180;corner.push(new V(W/2+e*Math.cos(g),yTop+e*Math.sin(g),s));}
+const A=[c1b,c1].concat(corner).concat([new V(W/2+e+0.01,yTop-0.1,s),new V(W/2+0.1,K.y+0.14,s)]).concat(st(0));
+const B=[q2b,q2,new V(W/2+e+0.03,q2.y+0.08,s),new V(W/2+0.1,K.y-0.18,s)].concat(st(Math.PI));
+const E=K.clone().addScaledVector(d,Lt);
+const th=2*Math.PI*tw;
+const ax=dirAt(th);
+if(!q.shino&&!q.ring){
+const tail=function(sg){const a=[];for(let i=1;i<=4;i++)a.push(E.clone().addScaledVector(d,0.3*i).addScaledVector(ax,sg*HR*(1+0.6*i)));return a;};
+A.push.apply(A,tail(1));B.push.apply(B,tail(-1));
+}else{
+// シノの向き。板の端に沿った横向きから、上側を通って反対の横向きまで、半周ずつ回して差し直す（下には単管がある）。
+const kk=Math.max(0,Math.ceil(2*tw-1e-9)-1),frac=2*Math.PI*tw-kk*Math.PI,ths=-Math.PI/2+frac;
+const axs=dirAt(ths);
+const bs=new V().crossVectors(d,axs).normalize();
+const rr=0.1,R=E.clone().addScaledVector(d,rr+0.06);
+const ring=function(end,side){
+const v=end.clone().sub(R);
+const g0=Math.atan2(v.dot(bs),-v.dot(d));
+const a=[];
+for(let i=1;i<=30;i++){const g=g0+2.5*Math.PI*i/30;a.push(R.clone().addScaledVector(d,-rr*Math.cos(g)).addScaledVector(bs,rr*Math.sin(g)).addScaledVector(axs,side*(0.06+0.11*i/30)));}
+return a;};
+A.push.apply(A,ring(A[A.length-1],-1));B.push.apply(B,ring(B[B.length-1],1));
+const ea=A[A.length-1],eb=B[B.length-1];
+const hang=function(p,side){const a=[];
+if(q.cut){a.push(p.clone().addScaledVector(d,0.06));return a;}
+// 余りはシノから外（ねじれと反対の向き）へ離し、左手で持つ。シノを抜いた後は、外へ伸びたまま単管の上に垂れる。
+const base=R.clone().addScaledVector(d,0.3).addScaledVector(axs,side*0.2);
+a.push(p.clone().lerp(base,0.5).addScaledVector(d,0.05));
+a.push(base);
+for(let i=1;i<=4;i++){const pnt=base.clone().addScaledVector(d,0.3*i).addScaledVector(axs,side*0.02*i).add(new V(0,q.ring?-0.06*i*i:-0.02*i*i,0));pnt.y=Math.max(pnt.y,restY(pnt.z));a.push(pnt);}
+return a;};
+A.push.apply(A,hang(ea,-1));B.push.apply(B,hang(eb,1));
+if(q.shino){
+// シノの先は輪から少しだけ出す（下の単管に当たらないように）。
+dyn.add(shino(R.clone().addScaledVector(axs,-0.3),axs));
+arrow(E.clone().addScaledVector(d,0.4),th+0.3);
+}
+}
+dyn.add(tube(A,fm));dyn.add(tube(B,fm));
+dyn.add(endDot(A[A.length-1]));dyn.add(endDot(B[B.length-1]));
+}
+const tgt=new V(),tgtG=new V();
+let th=1.0,ph=0.5,rad=6,radG=6,goT=null,goP=null,auto=false,drag=false,lx=0,ly=0;
+function focusAll(){tgtG.set(0,r,0);radG=14;}
+function focusShino(){if(step===0){tgtG.set(0,yTop+1.6,2.5);radG=14;}else if(step===1){tgtG.set(0,r,0);radG=12;}else{tgtG.copy(K);radG=step>=6?3:5;}}
+function setStep(sn,keep){
+anim=null;animQ=null;
+step=Math.max(0,Math.min(7,sn));
+setCap(CAP[step][0],CAP[step][1]);
+build();
+if(!keep){focusShino();}
+document.querySelectorAll('.vb[data-s]').forEach(function(b){b.classList.toggle('on',parseInt(b.dataset.s)===step);});
+}
+function place(){
+tgt.lerp(tgtG,0.15);
+rad+=(radG-rad)*0.15;
+cam.position.set(tgt.x+rad*Math.cos(ph)*Math.sin(th),tgt.y+rad*Math.sin(ph),tgt.z+rad*Math.cos(ph)*Math.cos(th));
+cam.lookAt(tgt);
+}
+function zoom(f){radG=Math.max(1.2,Math.min(30,radG*f));}
+const ptrs=new Map();
+let pd=0;
+c.addEventListener('pointerdown',function(ev){
+ptrs.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
+c.setPointerCapture(ev.pointerId);
+goT=null;goP=null;
+if(ptrs.size===1){drag=true;lx=ev.clientX;ly=ev.clientY;c.style.cursor='grabbing';}
+if(ptrs.size===2){drag=false;const a=Array.from(ptrs.values());pd=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);}
+});
+function up2(ev){
+ptrs.delete(ev.pointerId);
+if(ptrs.size===0){drag=false;c.style.cursor='grab';}
+if(ptrs.size===1){const a=Array.from(ptrs.values())[0];lx=a.x;ly=a.y;drag=true;}
+}
+c.addEventListener('pointerup',up2);
+c.addEventListener('pointercancel',up2);
+c.addEventListener('pointermove',function(ev){
+if(ptrs.has(ev.pointerId))ptrs.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
+if(ptrs.size===2){
+const a=Array.from(ptrs.values());
+const dd=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
+if(pd>0&&dd>0){zoom(pd/dd);}
+pd=dd;
+return;
+}
+if(!drag)return;
+th-=(ev.clientX-lx)*0.012;
+ph=Math.max(-1.5,Math.min(1.5,ph+(ev.clientY-ly)*0.012));
+lx=ev.clientX;ly=ev.clientY;
+});
+c.addEventListener('wheel',function(ev){ev.preventDefault();zoom(ev.deltaY>0?1.12:0.89);},{passive:false});
+document.querySelectorAll('.vb[data-s]').forEach(function(b){
+b.addEventListener('click',function(){setStep(parseInt(b.dataset.s),false);});
+});
+document.getElementById('nx').addEventListener('click',function(){setStep(step>=7?0:step+1,false);});
+// 3の状態から2回転まで、シノを連続で回して見せる。
+document.getElementById('pl').addEventListener('click',function(){
+setStep(3,false);
+anim={t0:performance.now()};
+});
+document.getElementById('zi').addEventListener('click',function(){zoom(0.7);});
+document.getElementById('zo').addEventListener('click',function(){zoom(1.4);});
+document.getElementById('fs').addEventListener('click',focusShino);
+document.getElementById('fa').addEventListener('click',focusAll);
+document.getElementById('hp').addEventListener('click',function(){
+hideSolid=!hideSolid;
+this.textContent=hideSolid?'板と単管を出す':'板と単管を隠す';
+solids.visible=!hideSolid;
+});
+document.querySelectorAll('.vb[data-t]').forEach(function(b){
+b.addEventListener('click',function(){
+goT=parseFloat(b.dataset.t)*Math.PI/180;
+goP=parseFloat(b.dataset.p);
+auto=false;
+document.getElementById('ar').textContent='自動回転 切';
+});
+});
+document.getElementById('ar').addEventListener('click',function(){
+auto=!auto;goT=null;goP=null;
+this.textContent=auto?'自動回転 入':'自動回転 切';
+});
+// 画面の幅が変わったら（携帯の向きを変えたときなど）、描く大きさを合わせ直す。
+window.addEventListener('resize',function(){const w=c.clientWidth||340;renderer.setSize(w,H0);cam.aspect=w/H0;cam.updateProjectionMatrix();});
+function wrapA(a){while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;return a;}
+function loop(){
+requestAnimationFrame(loop);
+if(anim){
+const now=performance.now();
+if(now-lastB>60){
+lastB=now;
+const T2=0.5+Math.min((now-anim.t0)/8000,1)*1.5;
+animQ={tw:T2,shino:true};
+build();
+setCap('シノを回しています：'+T2.toFixed(1)+'回転'+(T2<1.1?'（シノに巻き付けた番線が、根元のねじれに巻き込まれ始める）':'（ねじれが伸びて締まっていく）'),'根拠：回す向きは藤羽（右利きは時計回り）。途中の形は3と5の間を補った図（推測）');
+if(T2>=2){anim=null;animQ=null;setStep(5,true);}
+}
+}
+if(auto&&!drag)th+=0.01;
+if(goT!==null){
+const dd=wrapA(goT-th);
+th+=dd*0.15;
+ph+=(goP-ph)*0.15;
+if(Math.abs(dd)<0.005&&Math.abs(goP-ph)<0.005){th=goT;ph=goP;goT=null;goP=null;}
+}
+place();
+renderer.render(scene,cam);
+}
+setStep(5,false);
+tgt.copy(tgtG);rad=radG;
+loop();
+</script>
+</body>
+</html>
