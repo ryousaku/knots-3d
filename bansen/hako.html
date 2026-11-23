@@ -26,9 +26,9 @@ h1{font-size:20px;margin:0}
 <div class="wrap">
 <a class="back" href="../">← 結び方の一覧</a>
 <h1>箱縛り</h1>
-<p class="sub">単管に載せた足場板／板の上を番線2本で渡し、両端で単管に掛けて、板の端でねじってシノで締める</p>
+<p class="sub">単管に載せた足場板／番線を奥の単管の下にくぐらせ、板の上を2本で渡し、手前の角で輪を作って手前の単管の下から引き上げ、シノで締める</p>
 <div id="c" style="position:relative;width:100%;height:440px;touch-action:none;border-radius:12px;background:var(--surface-1);overflow:hidden;cursor:grab"></div>
-<div class="key"><b style="background:#BA7517"></b>板と単管に掛ける部分<b style="background:#2F7FB5"></b>両端（ねじる部分と余り）<b style="background:#E24B4A"></b>切り口<b style="background:#7F77DD"></b>シノを回す向き</div>
+<div class="key"><b style="background:#BA7517"></b>奥でくぐらせて板の上を渡る部分<b style="background:#2F7FB5"></b>手前の端（輪・ねじれ・余り）<b style="background:#E24B4A"></b>切り口<b style="background:#7F77DD"></b>シノを回す向き</div>
 <div id="cap"></div>
 <div class="row">
 <button class="vb" data-s="0">番線</button>
@@ -36,11 +36,10 @@ h1{font-size:20px;margin:0}
 <button class="vb" data-s="2">2</button>
 <button class="vb" data-s="3">3</button>
 <button class="vb" data-s="4">4</button>
-<button class="vb on" data-s="5">5</button>
-<button class="vb" data-s="6">6</button>
+<button class="vb" data-s="5">5</button>
+<button class="vb on" data-s="6">6</button>
 <button class="vb" data-s="7">7</button>
 <button id="nx" class="vb">次へ</button>
-<button id="pl" class="vb">回して見る</button>
 </div>
 <div class="row">
 <button id="hp" class="vb">板と単管を隠す</button>
@@ -98,10 +97,11 @@ const dyn=new THREE.Group();
 scene.add(dyn);
 const WR=0.035;
 // 確認用: 描いた線とシノの点をすべて記録しておく（板・単管へのめり込みを調べるため）。
-window._pts=[];
+window._pts=[];window._curves=[];window._shino=[];
 function tube(pts,mat){
 const cv=new THREE.CatmullRomCurve3(pts,false,'centripetal');
 window._pts.push.apply(window._pts,cv.getSpacedPoints(400));
+window._curves.push(cv);
 return new THREE.Mesh(new THREE.TubeGeometry(cv,Math.max(200,pts.length*12),WR,10,false),mat);
 }
 function endDot(p){
@@ -109,41 +109,65 @@ const m=new THREE.Mesh(new THREE.SphereGeometry(0.06,14,14),em);
 m.position.copy(p);
 return m;
 }
-// 番線の通り道。板の上面を2本（z=+s と z=-s）が渡り、板の両端の外側で単管に1巻きずつ掛かる。
-// 番線の中心は、板と単管の表面から線の太さ（WR）より少し外を通る。
+// 番線の通り道（動画「【番線#03】足場板のはこ縛り」と「【番線縛り】足場板の固定方法！ハコ縛り！」で確かめた順）。
+// 奥の端（-x 側）で単管の下をU字にくぐらせ、両端をそろえて板の奥の角で折り、板の上面を2本（P：z=+s、Q：z=-s）で手前へ渡す。
+// 手前の端（+x 側）で Q が輪を作り、Q の先を単管の下にくぐらせて引き上げる。輪にシノを差して、上から見て時計回りに回す。
+// ねじれるのは、板の手前の角から単管までの縦の部分。
 const e=WR+0.008,s=0.07,rw=r+e,yTop=r+T;
 const phi0=Math.asin(s/rw);
-const path=(function(){
+// 奥の端の外で、単管の下をくぐるU字（z=+s の側から下を通って z=-s の側へ）。
+function farU(){
 const a=[];
-const arc=function(cx,cy,a0,a1,z){for(let i=0;i<=6;i++){const g=(a0+(a1-a0)*i/6)*Math.PI/180;a.push(new V(cx+e*Math.cos(g),cy+e*Math.sin(g),z));}};
-const line=function(p0,p1,n){for(let i=1;i<n;i++)a.push(p0.clone().lerp(p1,i/n));};
-// 板の上面（z=+s）を手前から奥へ
-a.push(new V(W/2,yTop+e,s));
-line(new V(W/2,yTop+e,s),new V(-W/2,yTop+e,s),24);
-arc(-W/2,yTop,90,180,s);
-// 奥の端の面を下りる
-line(new V(-W/2-e,yTop,s),new V(-W/2-e,rw*Math.cos(phi0)+0.02,s),5);
-// 奥の端の外で、単管に1巻き（z が + の側から下を通って - の側へ）
 for(let i=0;i<=36;i++){const f=phi0+(2*Math.PI-2*phi0)*i/36;a.push(new V(-W/2-e,rw*Math.cos(f),rw*Math.sin(f)));}
-// 奥の端の面を上がる
-line(new V(-W/2-e,rw*Math.cos(phi0)+0.02,-s),new V(-W/2-e,yTop,-s),5);
-arc(-W/2,yTop,180,90,-s);
-// 板の上面（z=-s）を奥から手前へ
-line(new V(-W/2,yTop+e,-s),new V(W/2,yTop+e,-s),24);
-arc(W/2,yTop,90,0,-s);
-// 手前の端の面を下りる
-line(new V(W/2+e,yTop,-s),new V(W/2+e,rw*Math.cos(phi0)+0.02,-s),5);
-// 手前の端の外で、単管に1巻き（z が - の側から下を通って + の側へ）
-for(let i=0;i<=36;i++){const f=-phi0-(2*Math.PI-2*phi0)*i/36;a.push(new V(W/2+e,rw*Math.cos(f),rw*Math.sin(f)));}
 return a;
-})();
-// 手前の端の結び目。ねじれの軸 d は板の端から外向き（水平）。
-const K=new V(W/2+0.22,r+T*0.6,s);
-const d=new V(1,0,0),u=new V(0,1,0),rt=new V(0,0,-1);
-// 角度 α は、締める人から見て上（u）から右（rt）へ時計回りに測る。
-const HR=0.05;
-function axisPt(sx,al,rad){return K.clone().addScaledVector(d,sx).addScaledVector(u,rad*Math.cos(al)).addScaledVector(rt,rad*Math.sin(al));}
-function dirAt(al){return u.clone().multiplyScalar(Math.cos(al)).addScaledVector(rt,Math.sin(al));}
+}
+function line(a,p0,p1,n){for(let i=1;i<=n;i++)a.push(p0.clone().lerp(p1,i/n));}
+function cornerArc(a,cx,a0,a1,z){for(let i=1;i<=6;i++){const g=(a0+(a1-a0)*i/6)*Math.PI/180;a.push(new V(cx+e*Math.cos(g),yTop+e*Math.sin(g),z));}}
+// 奥の端から板の上面を手前の角まで。dir=+1 は P（z=+s）を手前へ、Q は逆にたどる。
+function overTop(zz){
+// 奥の端の面を上がり、奥の角を回って、上面を手前の角まで。
+const a=[new V(-W/2-e,rw*Math.cos(phi0)+0.02,zz)];
+line(a,a[0].clone(),new V(-W/2-e,yTop,zz),5);
+cornerArc(a,-W/2,180,90,zz);
+line(a,new V(-W/2,yTop+e,zz),new V(W/2,yTop+e,zz),24);
+return a;
+}
+// 手前の結び目。ねじれの軸は、板の手前の面のすぐ外を縦に通る（x=XA, z=0）。
+const XA=W/2+e+0.08,HR=0.075,YT=yTop+0.08,YB=r+0.22;
+// 3本の角度（上から見て +x から +z へ測る）。P は板の面の側、Qd（輪から下りる）は +z の側、Qu（単管の下から上がる）は -z の側。120度ずつ離す。
+const AP=Math.PI,AQD=Math.PI/3,AQU=-Math.PI/3;
+function hx(al,y){return new V(XA+HR*Math.cos(al),y,HR*Math.sin(al));}
+// ねじれ。下（単管の側）を固定し、上へ行くほど turns 回転だけ時計回りに回る。turns は整数にして、上と下のつなぎ目の形を毎回同じにする。
+function helix(al,turns,downward){
+const a=[];
+for(let i=0;i<=40;i++){const t=i/40;const y=YB+(YT-YB)*t;a.push(hx(al+2*Math.PI*turns*t,y));}
+return downward?a.reverse():a;
+}
+// 手前の端の外で、単管の下をくぐるU字（Qd の下の端 z=+HR から、下を通って Qu の下の端 z=-HR へ）。
+const XU=XA+HR*Math.cos(AQD),ZU=HR*Math.sin(AQD),phiN=Math.asin(ZU/rw);
+function nearU(){
+const a=[];
+for(let i=0;i<=36;i++){const f=phiN+(2*Math.PI-2*phiN)*i/36;a.push(new V(XU,rw*Math.cos(f),rw*Math.sin(f)));}
+return a;
+}
+// 輪。手前の角の上に立つ縦の輪で、シノはこれを x の向きに通る。入口と出口は輪の下で交差し、x の向きに少しずらす。
+const RC=new V(XA,YT+0.35,0),RR=0.13;
+function ring(){
+const a=[];
+for(let i=0;i<=28;i++){const g=-Math.PI/2+2*Math.PI*i/28;a.push(new V(XA-0.06+0.12*i/28,RC.y+RR*Math.sin(g),RR*Math.cos(g)));}
+return a;
+}
+// P：手前の角を回って、板の面に沿ってねじれの上の端へ。
+function pDown(){
+const a=[];
+a.push(new V(W/2+0.02,yTop+e+0.012,s*0.8),hx(AP,YT));
+return a;
+}
+// Q：手前の角から輪の入口へ上がる。
+function qUp(){
+// 手前の角から、ねじれの上を越えて輪へ（ねじれた番線に触れないよう、角のすぐ上で持ち上げる）。
+return [new V(W/2+0.012,YT+0.12,-0.13),new V(XA-0.07,RC.y-RR-0.02,-0.04)];
+}
 function shino(tip,dir){
 const g=new THREE.Group();
 const rod=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.03,4.5,24),sm);
@@ -154,101 +178,96 @@ head.position.y=4.5+0.38;
 g.add(head);
 g.quaternion.setFromUnitVectors(new V(0,1,0),dir);
 g.position.copy(tip);
-for(let i=0;i<=40;i++)window._pts.push(tip.clone().addScaledVector(dir,5.2*i/40));
+for(let i=0;i<=40;i++)window._shino.push(tip.clone().addScaledVector(dir,4.5*i/40));
 return g;
 }
-function arrow(ctr,al0){
+// 上から見て時計回りの矢印（輪の上、水平な面）。
+function arrow(){
 const pts=[];
-const R=1.2;
-for(let i=0;i<=40;i++){const g=al0+Math.PI*1.2*i/40;pts.push(ctr.clone().addScaledVector(dirAt(g),R));}
+const R=0.9,cy=RC.y+0.45;
+for(let i=0;i<=40;i++){const g=Math.PI*0.75+Math.PI*1.2*i/40;pts.push(new V(XA+R*Math.cos(g),cy,R*Math.sin(g)));}
 dyn.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),80,0.035,8,false),am));
 const cone=new THREE.Mesh(new THREE.ConeGeometry(0.11,0.3,14),am);
 cone.position.copy(pts[pts.length-1]);
 cone.quaternion.setFromUnitVectors(new V(0,1,0),pts[pts.length-1].clone().sub(pts[pts.length-2]).normalize());
 dyn.add(cone);
 }
-// 段階: 0=番線だけ 1=板に渡して両端で単管に掛ける 2=手前の端で交差させて180度ひねる 3=シノを根元に当て両端を巻き付ける
-// 4=180度回す 5=差し直して繰り返す 6=シノを抜く 7=余りを切る
-const ST=[null,null,{tw:0.5},{tw:0.5,shino:true},{tw:1,shino:true},{tw:2,shino:true},{tw:2,ring:true},{tw:2,ring:true,cut:true}];
+// 段階: 0=番線だけ 1=奥の単管の下にくぐらせ両端をそろえる 2=奥の角で折り、板の上を手前へ渡す 3=手前の角で輪を作る
+// 4=輪を作った方を手前の単管の下にくぐらせて引き上げる 5=輪にシノを差して時計回りに回す 6=締まった形 7=余りを切る
+const ST=[null,null,null,{},{u:true},{u:true,turns:1,shino:true},{u:true,turns:2},{u:true,turns:2,cut:true}];
 const CAP=[
-['番線。図では1本もの（両端が切り口）にしている。','根拠：動画では番線の形（1本ものか二つ折りか）は見分けられない（推測）'],
-['単管の上に載せた足場板に、番線を渡す。板の上面を2本が通り、板の両端の外側で、それぞれ単管に1巻きずつ掛ける。両端は手前の端に出しておく。','根拠：手前の端の外で単管に巻き付けていること、板の上面を2本が渡ることは、動画「【番線シリーズ】箱縛り」「【簡単】これで一瞬。番線の締め方『箱縛り』」で確認。奥の端でも同じように単管に掛けているのは、上面に2本渡っていることからの推測'],
-['手前の端で、単管のすぐ上で2本を交差させ、時計回りに180度ひねる。','根拠：結び目が板の端、単管のすぐ上にできることは動画で確認。ひねり方は板2枚の縛り方（藤羽）と同じにした（推測）'],
-['交差部の根元にシノを当て、両端をシノに巻き付けて輪を作る。シノは板の端に沿って横向きに当てる。','根拠：動画で「最初に輪っかを作っちゃいます」「あとはいつも通り」と言っている。輪の作り方は藤羽の締め方に合わせた（推測）'],
-['シノを、上側を通って時計回りに180度回す。巻き付けた番線が、根元のねじれに巻き込まれていく。','根拠：回す向きは藤羽（右利きは時計回り）。下には単管があるので上側を回し、半周ごとに差し直す形にした（推測）'],
-['シノを差し直して、同じように回すのを繰り返す。締めすぎると切れる。','根拠：藤羽、中央ビルト工業。回す回数は資料に数値なし（図は2回転）'],
-['シノを抜く。余りの2本は外へ伸びている。','根拠：推測（動画では、この場面ははっきり映っていない）'],
-['余りを短く切る。板の端の結び目から、板の上面に2本が渡る形になる。','根拠：完成の形は動画の最後の場面で確認。余りを短く切ることは中央ビルト工業、足場ベストパートナー。残す長さは資料に数値なし']
+['番線（1本もの）。','根拠：「【番線#03】足場板のはこ縛り」（https://www.youtube.com/watch?v=F-DlXcBLJjA）0:06〜0:10 の字幕「この際、先端は揃えましょう」（1本の番線の両端をそろえて使う）'],
+['奥の端の外で、番線を下の単管の下にくぐらせて通し、両端をそろえて上へ引き上げる。単管には巻き付けず、くぐらせるだけ。','根拠：「【番線#03】足場板のはこ縛り」0:06〜0:10 の字幕「まず下の単管に番線をくぐらせて通します。この際、先端は揃えましょう」、「【番線縛り】足場板の固定方法！ハコ縛り！」（https://www.youtube.com/watch?v=-29ykrgZAuM）0:51〜0:58「単管の下から通します」。巻き付けずにくぐらせるだけなのは、後者 0:51〜0:58 の映像で確認'],
+['2本をそろえたまま足場板の角で折り曲げ、板の上を手前の端まで渡す。2本は単管と同じ向きに並んで、板をまたぐ。','根拠：「【番線#03】」0:11〜0:19 の字幕「足場板の角で折り曲げます」、「ハコ縛り！」0:55〜0:58「キュッと絞って、こっちに折り曲げます」。板の上を2本が渡る形は「【番線#03】」0:42 の映像で確認'],
+['手前の角で、片方の番線で輪を作る。輪を作るときの交差の向きが大事で、時計回りに回すなら尻手（番線の端）を奥にする。','根拠：「【番線#03】」0:21〜0:33 の字幕「反対の角で輪をつくります」「輪を作る交差がポイント！時計回りの場合は尻手を奥にします」、「ハコ縛り！」1:02〜1:12（輪っかを作る場面）。どちらの番線で輪を作るか、輪の大きさ・向きは、映像から確定できなかった（図は一例）'],
+['輪を作った方の番線の先を、手前の単管の下にくぐらせて引き上げる。','根拠：「【番線#03】」0:37〜0:42 の字幕「下の単管をくぐらせて引き上げます」、「ハコ縛り！」1:17〜1:30「輪っかを作った方です。これを、この単管の下から、こう持ってくる」。引き上げた先を輪とどう組むか（「ハコ縛り！」1:35〜1:40 で「十字に」と言っている所）は、映像から確定できなかった'],
+['輪にシノを差し、シノを板の上に寝かせて、上から見て時計回りに回す。板の手前の角から単管までの縦の部分がねじれていく。','根拠：「【番線#03】」0:45〜0:56 の字幕「しのを挿して時計回りに回します」（シノが板の上に寝て回る様子を映像で確認）、0:51〜1:00 の字幕「輪の交差が逆だと反時計回りに回さなければならずやりづらい。※左利きの場合はやりやすい」。ねじれに入る番線の本数と並びは、映像から確定できなかった（図は3本にしている）'],
+['締まると、板の手前の角から単管まで、番線がねじれて縄のようになる。足場板は動かなくなる。','根拠：「ハコ縛り！」2:25 の「この足場板、全く動かなくなってる」、「【番線#03】」1:00 の映像。回す回数は資料に数値なし（図は2回転）'],
+['余りを短く切る。作業する人に当たると危ないので、切った先は倒しておく。','根拠：「ハコ縛り！」2:38〜2:52（ニッパーで切る場面、「この作業者の人が当たったら危ないんで」）。倒す向きは映像から確定できなかったので、図では倒していない']
 ];
 function setCap(t,sr){document.getElementById('cap').innerHTML=t+'<div class="src">'+sr+'</div>';}
-let step=5,hideSolid=false,animQ=null,anim=null,lastB=0;
-function clear(){window._pts=[];while(dyn.children.length){const o=dyn.children[0];o.traverse(function(m){if(m.geometry)m.geometry.dispose();});dyn.remove(o);}}
-const N=path.length;
-// 余りが単管の上に垂れるときの、いちばん低い高さ（単管の表面から線の太さ＋すき間）。
-function restY(z){const rr=r+WR+0.03;return Math.sqrt(Math.max(0,rr*rr-z*z))+0.0;}
+let step=6,hideSolid=false;
+function clear(){window._pts=[];window._curves=[];window._shino=[];while(dyn.children.length){const o=dyn.children[0];o.traverse(function(m){if(m.geometry)m.geometry.dispose();});dyn.remove(o);}}
 function build(){
 clear();
 if(step===0){
 const L=13,X=1.2,Y=yTop+2;
-const mid=[],a=[],b=[];
-for(let i=0;i<=26;i++)mid.push(new V(-L/2+L*i/26,Y,2.5));
-for(let i=0;i<=4;i++){a.push(new V(-L/2-X+X*i/4,Y,2.5));b.push(new V(L/2+X*i/4,Y,2.5));}
-dyn.add(tube(mid,wm));dyn.add(tube(a,fm));dyn.add(tube(b,fm));
-dyn.add(endDot(a[0]));dyn.add(endDot(b[b.length-1]));
-return;
-}
-dyn.add(tube(path,wm));
-// 端1: 手前の角（z=+s）から。端2: 手前の単管の巻きの終わり（z=+s、単管の上）から。
-const c1=path[0],c1b=path[1],q2=path[N-1],q2b=path[N-2];
-if(step===1){
-// まだ交差させていない。端1は手前の角から上へ立てておく。
-const t1=[c1b,c1,new V(W/2+e*0.7,yTop+e*0.7,s),new V(W/2+e+0.01,yTop+0.3,s),new V(W/2+e+0.03,yTop+1.0,s)];
-const t2=[q2b,q2,new V(W/2+e+0.15,q2.y+0.04,s),new V(W/2+0.7,q2.y+0.07,s),new V(W/2+1.3,q2.y+0.09,s)];
-dyn.add(tube(t1,fm));dyn.add(tube(t2,fm));
-dyn.add(endDot(t1[t1.length-1]));dyn.add(endDot(t2[t2.length-1]));
-return;
-}
-const q=animQ||ST[step];
-const tw=q.tw,Lt=0.06+0.14*tw;
-const st=function(al0){const a=[];for(let i=0;i<=30;i++){const t=i/30;a.push(axisPt(Lt*t,al0+2*Math.PI*tw*t,HR));}return a;};
-// 端1は上から、端2は下からねじれに入る。
-// 端1は手前の角を回って面を下りてから、上からねじれに入る。
-const corner=[];for(let i=1;i<=5;i++){const g=(90-90*i/5)*Math.PI/180;corner.push(new V(W/2+e*Math.cos(g),yTop+e*Math.sin(g),s));}
-const A=[c1b,c1].concat(corner).concat([new V(W/2+e+0.01,yTop-0.1,s),new V(W/2+0.1,K.y+0.14,s)]).concat(st(0));
-const B=[q2b,q2,new V(W/2+e+0.03,q2.y+0.08,s),new V(W/2+0.1,K.y-0.18,s)].concat(st(Math.PI));
-const E=K.clone().addScaledVector(d,Lt);
-const th=2*Math.PI*tw;
-const ax=dirAt(th);
-if(!q.shino&&!q.ring){
-const tail=function(sg){const a=[];for(let i=1;i<=4;i++)a.push(E.clone().addScaledVector(d,0.3*i).addScaledVector(ax,sg*HR*(1+0.6*i)));return a;};
-A.push.apply(A,tail(1));B.push.apply(B,tail(-1));
-}else{
-// シノの向き。板の端に沿った横向きから、上側を通って反対の横向きまで、半周ずつ回して差し直す（下には単管がある）。
-const kk=Math.max(0,Math.ceil(2*tw-1e-9)-1),frac=2*Math.PI*tw-kk*Math.PI,ths=-Math.PI/2+frac;
-const axs=dirAt(ths);
-const bs=new V().crossVectors(d,axs).normalize();
-const rr=0.1,R=E.clone().addScaledVector(d,rr+0.06);
-const ring=function(end,side){
-const v=end.clone().sub(R);
-const g0=Math.atan2(v.dot(bs),-v.dot(d));
 const a=[];
-for(let i=1;i<=30;i++){const g=g0+2.5*Math.PI*i/30;a.push(R.clone().addScaledVector(d,-rr*Math.cos(g)).addScaledVector(bs,rr*Math.sin(g)).addScaledVector(axs,side*(0.06+0.11*i/30)));}
-return a;};
-A.push.apply(A,ring(A[A.length-1],-1));B.push.apply(B,ring(B[B.length-1],1));
-const ea=A[A.length-1],eb=B[B.length-1];
-const hang=function(p,side){const a=[];
-if(q.cut){a.push(p.clone().addScaledVector(d,0.06));return a;}
-// 余りはシノから外（ねじれと反対の向き）へ離し、左手で持つ。シノを抜いた後は、外へ伸びたまま単管の上に垂れる。
-const base=R.clone().addScaledVector(d,0.3).addScaledVector(axs,side*0.2);
-a.push(p.clone().lerp(base,0.5).addScaledVector(d,0.05));
-a.push(base);
-for(let i=1;i<=4;i++){const pnt=base.clone().addScaledVector(d,0.3*i).addScaledVector(axs,side*0.02*i).add(new V(0,q.ring?-0.06*i*i:-0.02*i*i,0));pnt.y=Math.max(pnt.y,restY(pnt.z));a.push(pnt);}
-return a;};
-A.push.apply(A,hang(ea,-1));B.push.apply(B,hang(eb,1));
+for(let i=0;i<=30;i++)a.push(new V(-L/2-X+(L+2*X)*i/30,Y,2.5));
+dyn.add(tube(a,wm));
+dyn.add(endDot(a[0]));dyn.add(endDot(a[a.length-1]));
+return;
+}
+if(step===1){
+// 奥の単管の下をくぐらせ、両端をそろえて上へ。
+const top=yTop+1.3,U=farU();
+const a=[new V(-W/2-e,top,s)];
+line(a,a[0].clone(),U[0].clone().add(new V(0,0.02,0)),8);
+const b=a.concat(U.slice(1,-1));
+line(b,U[U.length-1].clone().add(new V(0,0.02,0)),new V(-W/2-e,top,-s),8);
+dyn.add(tube(b,wm));
+dyn.add(endDot(b[0]));dyn.add(endDot(b[b.length-1]));
+return;
+}
+const pTop=overTop(s),qTop=overTop(-s);
+const main=pTop.slice().reverse().concat(farU().slice(1,-1)).concat(qTop);
+dyn.add(tube(main,wm));
+const cP=pTop[pTop.length-1],cQ=qTop[qTop.length-1];
+let A,B;
+if(step===2){
+// 両端は手前の端から外へ伸ばしておく。
+A=[cP];line(A,cP.clone(),new V(W/2+1.0,yTop+e,s),5);
+B=[cQ];line(B,cQ.clone(),new V(W/2+1.0,yTop+e,-s),5);
+}else{
+const q=ST[step];
+const turns=q.turns||0;
+// P：角を回って板の面に沿って下り、ねじれに入る。端はねじれの下で止まる。
+A=[cP].concat(pDown()).concat(helix(AP,turns,true).slice(1));
+A.push(hx(AP,YB-0.07));
+// Q：角から輪へ上がり、輪を回って、ねじれの上へ下りる。
+const rg=ring();
+B=[cQ].concat(qUp()).concat(rg);
+const ex=rg[rg.length-1];
+B.push(new V(XA+0.06,RC.y-RR-0.08,0.03));
+if(!q.u){
+// 3：Q の先はまだ単管をくぐらせていない。手前へ垂らしておく。
+B.push(hx(AQD,YT+0.02));
+B.push(new V(XA+0.25,YT-0.15,HR+0.1),new V(XA+0.7,YT-0.3,HR+0.25),new V(XA+1.1,YT-0.4,HR+0.35));
+}else{
+B.push(hx(AQD,YT+0.02));
+B=B.concat(helix(AQD,turns,true).slice(1));
+const U=nearU();
+B.push(U[0].clone().add(new V(0,0.05,0)));
+B=B.concat(U.slice(1,-1));
+B.push(U[U.length-1].clone().add(new V(0,0.05,0)));
+B=B.concat(helix(AQU,turns,false));
+if(q.cut)B.push(new V(XA+0.04,YT+0.09,-HR-0.02));
+else B.push(new V(XA+0.08,YT+0.14,-HR-0.03),new V(XA+0.4,YT+0.35,-0.16),new V(XA+0.85,YT+0.5,-0.22));
+}
 if(q.shino){
-// シノの先は輪から少しだけ出す（下の単管に当たらないように）。
-dyn.add(shino(R.clone().addScaledVector(axs,-0.3),axs));
-arrow(E.clone().addScaledVector(d,0.4),th+0.3);
+const dir=new V(-1,0.12,0).normalize();
+dyn.add(shino(RC.clone().addScaledVector(dir,-0.35),dir));
+arrow();
 }
 }
 dyn.add(tube(A,fm));dyn.add(tube(B,fm));
@@ -257,9 +276,8 @@ dyn.add(endDot(A[A.length-1]));dyn.add(endDot(B[B.length-1]));
 const tgt=new V(),tgtG=new V();
 let th=1.0,ph=0.5,rad=6,radG=6,goT=null,goP=null,auto=false,drag=false,lx=0,ly=0;
 function focusAll(){tgtG.set(0,r,0);radG=14;}
-function focusShino(){if(step===0){tgtG.set(0,yTop+1.6,2.5);radG=14;}else if(step===1){tgtG.set(0,r,0);radG=12;}else{tgtG.copy(K);radG=step>=6?3:5;}}
+function focusShino(){if(step===0){tgtG.set(0,yTop+1.6,2.5);radG=14;}else if(step<=2){tgtG.set(0,r,0);radG=12;}else{tgtG.set(XA,0.95,0);radG=step===5?7:4;}}
 function setStep(sn,keep){
-anim=null;animQ=null;
 step=Math.max(0,Math.min(7,sn));
 setCap(CAP[step][0],CAP[step][1]);
 build();
@@ -308,11 +326,6 @@ document.querySelectorAll('.vb[data-s]').forEach(function(b){
 b.addEventListener('click',function(){setStep(parseInt(b.dataset.s),false);});
 });
 document.getElementById('nx').addEventListener('click',function(){setStep(step>=7?0:step+1,false);});
-// 3の状態から2回転まで、シノを連続で回して見せる。
-document.getElementById('pl').addEventListener('click',function(){
-setStep(3,false);
-anim={t0:performance.now()};
-});
 document.getElementById('zi').addEventListener('click',function(){zoom(0.7);});
 document.getElementById('zo').addEventListener('click',function(){zoom(1.4);});
 document.getElementById('fs').addEventListener('click',focusShino);
@@ -339,17 +352,6 @@ window.addEventListener('resize',function(){const w=c.clientWidth||340;renderer.
 function wrapA(a){while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;return a;}
 function loop(){
 requestAnimationFrame(loop);
-if(anim){
-const now=performance.now();
-if(now-lastB>60){
-lastB=now;
-const T2=0.5+Math.min((now-anim.t0)/8000,1)*1.5;
-animQ={tw:T2,shino:true};
-build();
-setCap('シノを回しています：'+T2.toFixed(1)+'回転'+(T2<1.1?'（シノに巻き付けた番線が、根元のねじれに巻き込まれ始める）':'（ねじれが伸びて締まっていく）'),'根拠：回す向きは藤羽（右利きは時計回り）。途中の形は3と5の間を補った図（推測）');
-if(T2>=2){anim=null;animQ=null;setStep(5,true);}
-}
-}
 if(auto&&!drag)th+=0.01;
 if(goT!==null){
 const dd=wrapA(goT-th);
@@ -360,7 +362,8 @@ if(Math.abs(dd)<0.005&&Math.abs(goP-ph)<0.005){th=goT;ph=goP;goT=null;goP=null;}
 place();
 renderer.render(scene,cam);
 }
-setStep(5,false);
+window._setStep=setStep;
+setStep(6,false);
 tgt.copy(tgtG);rad=radG;
 loop();
 </script>
