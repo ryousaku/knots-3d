@@ -26,7 +26,7 @@ h1{font-size:20px;margin:0}
 <div class="wrap">
 <a class="back" href="../">← 結び方の一覧</a>
 <h1>あや掛け</h1>
-<p class="sub">単管の交差部／人形番線の2本の足を別々の斜めに回し、裏で×（たすき）にしてシノで締める</p>
+<p class="sub">単管の交差部／人形番線の2本の足を交差部の裏へ回して×（たすき）にしてから前へ戻し、輪にシノを差して締める</p>
 <div id="c" style="position:relative;width:100%;height:440px;touch-action:none;border-radius:12px;background:var(--surface-1);overflow:hidden;cursor:grab"></div>
 <div class="key"><b style="background:#BA7517"></b>輪の側の2本<b style="background:#2F7FB5"></b>余りの2本<b style="background:#E24B4A"></b>切り口<b style="background:#7F77DD"></b>シノを回す向き</div>
 <div id="cap"></div>
@@ -104,8 +104,11 @@ function P(u,y,n){return new V().addScaledVector(UX,u).addScaledVector(YX,y).add
 const WR=0.034,OFF=0.038;
 // 余りの2本（先端側）は青、それ以外（輪の側と巻いた部分）はオレンジで塗り分ける。1本の番線であることは変わらない。
 const fm=new THREE.MeshStandardMaterial({color:0x2F7FB5,roughness:0.5,metalness:0.3});
+// 確認用: 描いた線を記録しておく（めり込みを調べるため）。
+window._curves=[];
 function tube(pts,rad,mat){
 const cv=new THREE.CatmullRomCurve3(pts,false,'centripetal');
+window._curves.push(cv);
 return new THREE.Mesh(new THREE.TubeGeometry(cv,Math.max(200,pts.length*12),rad,10,false),mat||wm);
 }
 function endDot(p){
@@ -176,15 +179,15 @@ let animQ=null,anim=null,lastB=0;
 // 図の下に出す説明。[何をしているか, 根拠]
 const CAP=[
 ['人形番線（二つ折りの番線）。折り目が輪になっている。足は片方が少し長い。','根拠：hayasaru の写真'],
-['左上から奥へ入れたもう片方の足を、2とは反対の斜めに裏を渡らせ、右下の隙間から前へ戻す。裏で1本目と×に交差する（これがあや掛け）。余りの2本は輪の根元で交差させて垂らす。「裏から」で×が見える。','根拠：hayasaru（「人形の股の部分を差し込み、後ろをあや掛け（ばってん）にして前に持ってきます」と表側・裏側の写真）、足場ベストパートナー（反対側から見るとバッテン）。2本の足が別々の斜めを回る形は、この2つの記述からの読み取り（推測を含む）'],
+['もう片方の足も裏で斜めに渡らせて前へ戻し、裏で1本目と×に交差させる（これがあや掛け）。余りの2本は輪の根元で交差させて垂らす。「裏から」で×が見える。','根拠：hayasaru（「後ろをあや掛け（ばってん）にして前に持ってきます」と、表側・後ろ側の写真）、足場ベストパートナー（反対側から見るとバッテン）。裏で×になる仕上がりは写真で確認。2本の足がそれぞれどの斜めを、どの順で回るかは、資料・動画で確定できなかった（図は一例）。なお 「【足場】色んな種類の番線縛りを紹介します」（https://www.youtube.com/watch?v=lqxJEQl3bCU） 0:24 の画面の文字では「クロスで落としてもいいし、平行に落としてもいい」と言っている'],
 ['輪にシノを約2cm差し、手前の単管に沿って寝かせる。余りの2本は、輪の外側を回ってから（輪はくぐらない）、輪のすぐ横のシノの先端側でシノの上に掛け、左手で押さえる。ここから先は斜め1周の締め方と同じ。','根拠：hayasaru の写真、中央ビルト工業。あや掛けでも回し方は同じ（hayasaru「時計回りは、一緒です」）'],
-['シノを時計回りに半回転。シノに掛かった余りの2本が反対側へ運ばれ、輪の側の2本に巻き付き始める。','根拠：この形は4と6の間を補った図（推測）。半回転ずつ回す動きはクロス縛りの動画で確認'],
+['シノを時計回りに回し始める。シノに掛かった余りの2本が、輪の側の2本に巻き付いていく。','根拠：回す向き（時計回り）は hayasaru「時計回りは、一緒です」。回し始めの途中の形は、資料・動画で確定できなかった。図は4と6の間をつないだもので、実際の形とは違うことがある'],
 ['回し続けると、4本がまとめてねじれて縄になる。半回転ずつシノを持ち直して回す。','根拠：中央ビルト工業、クロス縛りの動画'],
 ['輪が2回転ほどで締まる。すき間がなくなってから半回転が目安。締めすぎると切れる。シノは手前に少し引き込む。','根拠：中央ビルト工業、足場ベストパートナー'],
 ['シノを抜く。余りの2本は長いまま残っている。','根拠：琉徳チャンネルの動画'],
-['余りを根元で短く切り、叩いて寝かせ、引っかからない向きにする。','根拠：足場ベストパートナー、hayasaru、琉徳チャンネルの動画。残す長さの数値は資料になし。倒す向きは推測'],
-['輪を交差部の手前の中央に当てる。2本の足を上下に開き、手前から見て左上と左下の隙間から、それぞれ単管の奥へ回し始める。オレンジは単管に巻き付く部分、青は余りで、どちらも同じ1本の番線。','根拠：hayasaru（「人形の股の部分を差し込み」）。足を開いて別々の斜めへ回す手の順番は、資料の記述と写真からの読み取り（推測）'],
-['左下から奥へ入れた足を、裏を斜めに渡らせ、手前から見て右上の隙間から前へ戻す。これで1本目の斜めが一周する。もう片方の足はまだ奥で待っている。「裏から」で裏の斜め1本が見える。','根拠：どちらの足から回すかは資料になし（推測）。仕上がりの形は hayasaru の写真と同じになる']
+['余りを短く切る。','根拠：足場ベストパートナー、琉徳チャンネルの動画（余りを切る）。hayasaru は基本形で「飛び出た番線はハンマーでつぶす」と書いている。残す長さと倒す向きは、資料・動画で確定できなかった（図は切った形だけで、倒していない）'],
+['輪を交差部の手前の中央に当て、2本の足を奥へ差し込んで、単管の交差部の裏へ回す。','根拠：hayasaru（https://hayasaru.com/bansen-wire/「人形番線あや掛け」の節）「人形の股の部分を差し込み、後ろをあや掛け（ばってん）にして前に持ってきます」。足をどの隙間から入れるか、2本を開く向き・手の順番は、資料にも動画にもなく、確定できなかった。図の通し方は一例'],
+['片方の足を裏で斜めに渡らせ、反対の隙間から前へ戻す。','根拠：hayasaru（後ろをばってんにして前に持ってくる）。どちらの足から回すかは、hayasaru に記述がなく、「【足場】色んな種類の番線縛りを紹介します」（https://www.youtube.com/watch?v=lqxJEQl3bCU） 0:20〜0:52 の交差部の場面でも手元が手袋で隠れていて、確定できなかった。図はどちらか一方から回した一例']
 ];
 // ボタンの並び（表示の番号順）。中の段階番号とは別。
 const ORDER=[0,8,9,1,2,3,4,5,6,7];
@@ -209,6 +212,7 @@ const s=Math.min(h,R0*A),ex=h-s,psi=s/R0;
 return new V(R0-R0*Math.cos(psi)+p.x*Math.cos(psi)+ex*Math.sin(psi),yT+R0*Math.sin(psi)-p.x*Math.sin(psi)+ex*Math.cos(psi),p.z);
 }
 function build(){
+window._curves=[];
 while(dyn.children.length){const o=dyn.children[0];o.traverse(function(m){if(m.geometry)m.geometry.dispose();});dyn.remove(o);}
 root.rotation.x=(step===0)?0:Math.PI/2;
 pipes.visible=(step>0)&&!hidePipes;
@@ -229,12 +233,12 @@ const t=h[h.length-1].clone().sub(h[h.length-2]).normalize();
 const e=h[h.length-1];
 // 余りは手前の単管の表面に沿って下へ垂らす（単管の中に入らない高さを保つ）。
 const c=new V(0.05,yS+0.08,0);
-return {wrap:h,spare:[h[h.length-2],e,e.clone().addScaledVector(t,0.1).add(new V(0,0.06,0)),c.clone().add(new V(o,0,0.25)),new V(c.x+0.1+o,1+r+WR+0.06,0.7),new V(c.x+0.15+o,1+r+WR+0.06,1.3)]};
+return {wrap:h,spare:[h[h.length-2],e,e.clone().addScaledVector(t,0.1).add(new V(0,0.06,0)),c.clone().add(new V(o,0.04,0.25)),new V(c.x+0.1+o,1+r+WR+0.08,0.7),new V(c.x+0.15+o,1+r+WR+0.08,1.3)]};
 }
 const k=Math.round(h.length*0.45);
 const t=h[k].clone().sub(h[k-1]).normalize();
 const p=function(s,dz){return h[k].clone().addScaledVector(t,s).add(new V(0,0,dz));};
-return {wrap:h.slice(0,k+1).concat([p(0.25,0),p(0.5,0.02)]),spare:[p(0.25,0),p(0.5,0.02),p(0.9,0.1),p(1.4,0.3)]};
+return {wrap:h.slice(0,k+1).concat([p(0.25,0),p(0.5,0.02)]),spare:[p(0.25,0),p(0.5,0.02),p(0.9,0.12),p(1.4,0.34)]};
 };
 const A=leg(h1,true,-0.04),B=leg(h2,step===1,0.04);
 if(step===8){const a8=leg(h1,false,-0.04);A.wrap=a8.wrap;A.spare=a8.spare;}
@@ -304,10 +308,10 @@ fe2=F2.concat([F2[F2.length-1].clone().addScaledVector(uL,-0.06).add(new V(0,0.0
 }
 // オレンジ（単管に巻く部分と輪の側）は単管の上で終わり、そこから先の余りは青で続ける。つなぎ目は単管の上の1区間だけ重ねる。
 let core=h1.slice().reverse().concat(loopPart).concat(h2);
-if(q.cut){core=core.map(bendP);fe1=fe1.map(bendP);fe2=fe2.map(bendP);}
+// 倒す向きは資料・動画で確定できなかったので、切った後も倒さずに描く。
 dyn.add(tube(core,WR));
 const b1=[h1[h1.length-2],hF1].concat(free1).concat(fe1),b2=[h2[h2.length-2],hF2].concat(free2).concat(fe2);
-if(q.cut){b1.splice(0,2,bendP(h1[h1.length-2]),bendP(hF1));b2.splice(0,2,bendP(h2[h2.length-2]),bendP(hF2));}
+
 dyn.add(tube(b1,WR,fm));
 dyn.add(tube(b2,WR,fm));
 dyn.add(endDot(b1[b1.length-1]));
@@ -420,6 +424,7 @@ if(Math.abs(d)<0.005&&Math.abs(goP-ph)<0.005){th=goT;ph=goP;goT=null;goP=null;}
 place();
 renderer.render(scene,cam);
 }
+window._setStep=setStep;
 setStep(4,false);
 loop();
 </script>
