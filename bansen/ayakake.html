@@ -42,7 +42,6 @@ h1{font-size:20px;margin:0}
 <button class="vb" data-s="6">8</button>
 <button class="vb" data-s="7">9</button>
 <button id="nx" class="vb">次へ</button>
-<button id="pl" class="vb">回して見る</button>
 </div>
 <div class="row">
 <button id="hp" class="vb">単管を隠す</button>
@@ -372,11 +371,7 @@ document.querySelectorAll('.vb[data-s]').forEach(function(b){
 b.addEventListener('click',function(){setStep(parseInt(b.dataset.s),false);});
 });
 document.getElementById('nx').addEventListener('click',function(){setStep(ORDER[(ORDER.indexOf(step)+1)%ORDER.length],false);});
-// 2の状態から2回転まで、シノを連続で回して見せる。
-document.getElementById('pl').addEventListener('click',function(){
-setStep(2,false);
-anim={t0:performance.now()};
-});
+// 「回して見る」（連続アニメーション）は外した。回している途中の形は資料・動画で確定できなかったため。
 document.getElementById('zi').addEventListener('click',function(){zoom(0.7);});
 document.getElementById('zo').addEventListener('click',function(){zoom(1.4);});
 document.getElementById('fs').addEventListener('click',focusShino);
@@ -403,17 +398,6 @@ window.addEventListener('resize',function(){const w=c.clientWidth||340;renderer.
 function wrap(a){while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;return a;}
 function loop(){
 requestAnimationFrame(loop);
-if(anim){
-const now=performance.now();
-if(now-lastB>60){
-lastB=now;
-const T=Math.min((now-anim.t0)/9000,1)*2;
-animQ={turns:T,tilt:0.1+0.35*T/2};
-build();
-setCap('シノを時計回りに回しています：'+T.toFixed(1)+'回転'+(T<0.6?'（余りの2本がシノに運ばれ、輪の側の線に絡み始める）':T<1.6?'（4本がまとめてねじれていく）':'（輪が2回転ほどで締まる）'),'根拠：回す向きと回転数は中央ビルト工業。途中の形は4と7の間を補った図（推測）');
-if(T>=2){anim=null;animQ=null;setStep(5,true);}
-}
-}
 if(auto&&!drag)th+=0.01;
 if(goT!==null){
 const d=wrap(goT-th);
